@@ -65,7 +65,7 @@ export async function getUserTracks(userId: string) {
 export async function getTransactionHistory(userId: string) {
   const supabase = await createClient()
   const { data, error } = await supabase
-    .from('revenue_logs')
+    .from('transactions')
     .select('*')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })

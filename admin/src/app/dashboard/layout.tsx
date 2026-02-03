@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Users, Music, Settings, LogOut, DollarSign } from 'lucide-react'
+import { LayoutDashboard, Users, Music, Settings, LogOut, DollarSign, LifeBuoy } from 'lucide-react'
 import { Toaster } from "@/components/ui/sonner"
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
@@ -64,6 +64,10 @@ export default async function DashboardLayout({
           <Link href="/dashboard/payouts" className="flex items-center gap-2 p-2 rounded hover:bg-gray-800">
             <DollarSign size={20} />
             Payouts
+          </Link>
+          <Link href="/dashboard/support" className="flex items-center gap-2 p-2 rounded hover:bg-gray-800">
+            <LifeBuoy size={20} />
+            Help & Support
           </Link>
         </nav>
 

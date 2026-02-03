@@ -14,7 +14,7 @@ import { Eye, Loader2, Music, History, ShieldAlert, FileText, Ban, CheckCircle2 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { addRevenue } from "./funds-actions"
+import { adjustUserBalance } from "./funds-actions"
 import { getUserTracks, getTransactionHistory, updateUserStatus, updateAdminNotes } from "./actions"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -302,6 +302,7 @@ export default function UserDetailsDialog({ user }: { user: any }) {
 
 function FundsManager({ userId, currentBalance, onSuccess }: { userId: string, currentBalance: number, onSuccess: () => void }) {
     const [amount, setAmount] = useState('')
+    const [type, setType] = useState('credit')
     const [description, setDescription] = useState('')
     const [isLoading, setIsLoading] = useState(false)
 
@@ -312,10 +313,11 @@ function FundsManager({ userId, currentBalance, onSuccess }: { userId: string, c
             const formData = new FormData()
             formData.append('userId', userId)
             formData.append('amount', amount)
+            formData.append('type', type)
             formData.append('description', description)
             
-            await addRevenue(formData)
-            toast.success("Funds added successfully")
+            await adjustUserBalance(formData)
+            toast.success("Balance updated successfully")
             setAmount('')
             setDescription('')
             onSuccess()
@@ -330,15 +332,32 @@ function FundsManager({ userId, currentBalance, onSuccess }: { userId: string, c
         <div className="space-y-6">
              <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
                 <p className="text-xs text-gray-500 uppercase font-bold">Wallet Balance</p>
-                <p className="text-3xl font-black text-indigo-600">${currentBalance.toFixed(2)}</p>
+                <p className={`text-3xl font-black ${currentBalance < 0 ? 'text-red-500' : 'text-indigo-600'}`}>${currentBalance.toFixed(2)}</p>
             </div>
 
             <form onSubmit={handleAddFunds} className="space-y-4 pt-2">
                 <div className="space-y-1">
-                    <h3 className="font-bold text-sm">Add Revenue / Payout</h3>
-                    <p className="text-[10px] text-gray-400">Credit the user's wallet with earnings.</p>
+                    <h3 className="font-bold text-sm">Manual Adjustment</h3>
+                    <p className="text-[10px] text-gray-400">Credit or debit the user's wallet.</p>
                 </div>
                 
+                <div className="grid grid-cols-2 gap-2 p-1 bg-gray-100 rounded-lg">
+                    <button 
+                        type="button"
+                        onClick={() => setType('credit')}
+                        className={`text-xs font-bold py-2 rounded-md transition-all ${type === 'credit' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                    >
+                        + Credit (Add)
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={() => setType('debit')}
+                        className={`text-xs font-bold py-2 rounded-md transition-all ${type === 'debit' ? 'bg-white text-red-600 shadow-sm' : 'text-gray-500 hover:text-gray-900'}`}
+                    >
+                        - Debit (Deduct)
+                    </button>
+                </div>
+
                 <div className="grid gap-1.5">
                     <label className="text-xs font-bold text-gray-700">Amount ($)</label>
                     <Input 
@@ -355,15 +374,15 @@ function FundsManager({ userId, currentBalance, onSuccess }: { userId: string, c
                     <label className="text-xs font-bold text-gray-700">Description</label>
                     <Input 
                         type="text" 
-                        placeholder="e.g. November 2023 Royalties" 
+                        placeholder={type === 'credit' ? "e.g. Monthly Bonus" : "e.g. Correction"}
                         value={description}
                         onChange={e => setDescription(e.target.value)}
                         className="bg-white"
                     />
                 </div>
-                <Button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                <Button type="submit" disabled={isLoading} className={`w-full ${type === 'credit' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                    Add Funds
+                    {type === 'credit' ? 'Add Funds' : 'Deduct Funds'}
                 </Button>
             </form>
         </div>
