@@ -44,5 +44,22 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // Active User Check
+  if (user && !request.nextUrl.pathname.startsWith('/login')) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', user.id)
+        .single()
+      
+      if (profile?.status === 'banned' || profile?.status === 'suspended') {
+           await supabase.auth.signOut()
+           const url = request.nextUrl.clone()
+           url.pathname = '/login'
+           url.searchParams.set('error', 'Your account has been suspended. Please contact support.')
+           return NextResponse.redirect(url)
+      }
+  }
+
   return supabaseResponse
 }

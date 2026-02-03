@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
-import { UploadCloud, Loader2, Music, Image as ImageIcon, X, Calendar, Disc, Check, ChevronRight, ChevronLeft } from 'lucide-react'
+import { UploadCloud, Loader2, Music, Image as ImageIcon, X, Calendar, Disc, Check, ChevronRight, ChevronLeft, Save } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
@@ -275,7 +275,7 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
     const timestamp = Date.now()
 
     try {
-        if (!audioFile && !initialData?.file_url) throw new Error("Audio file is required")
+        if (status !== 'draft' && !audioFile && !initialData?.file_url) throw new Error("Audio file is required")
         let audioUrl = initialData?.file_url
         let coverArtUrl = initialData?.albums?.cover_art_url
 
@@ -353,7 +353,7 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
             audioUrl,
             coverArtUrl,
             releaseDate,
-            status: initialData?.status || 'pending'
+            status: status
         }
 
         const result = await submitTrack(formData)
@@ -939,35 +939,50 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
 
             {/* Navigation Footer */}
             <div className="flex justify-between items-center mt-12 pt-6 border-t border-white/10">
-                <Button 
-                    type="button" 
-                    variant="ghost" 
-                    onClick={prevStep} 
-                    disabled={currentStep === 1 || loading}
-                    className={`text-zinc-400 hover:text-white hover:bg-white/5 ${currentStep === 1 ? 'opacity-0 pointer-events-none' : ''}`}
-                >
-                    <ChevronLeft className="mr-2" size={16} /> Back
-                </Button>
-                
-                {currentStep < 4 ? (
+                {currentStep === 1 ? <div /> : (
                     <Button 
                         type="button" 
-                        onClick={nextStep}
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-12 px-8 rounded-full shadow-lg shadow-indigo-500/20"
-                    >
-                        Next Step <ChevronRight className="ml-2" size={16} />
-                    </Button>
-                ) : (
-                    <Button 
-                        type="button"
-                        onClick={(e) => handleSubmit(e, 'pending')} 
+                        variant="ghost" 
+                        onClick={prevStep} 
                         disabled={loading}
-                        className="bg-white text-black hover:bg-emerald-400 hover:text-black font-black uppercase tracking-[0.2em] h-14 px-10 rounded-full shadow-[0_0_20px_rgba(255,255,255,0.2)] hover:shadow-[0_0_40px_rgba(52,211,153,0.5)] transition-all text-sm"
+                        className="text-zinc-400 hover:text-white hover:bg-white/5"
                     >
-                        {loading ? <Loader2 className="animate-spin mr-2" /> : <UploadCloud className="mr-2" size={18} />}
-                        Confirm Submission
+                        <ChevronLeft className="mr-2" size={16} /> Back
                     </Button>
                 )}
+                
+                <div className="flex items-center gap-3">
+                    {/* Save Draft Button - Available at any step */}
+                    <Button 
+                        type="button" 
+                        onClick={(e) => handleSubmit(e, 'draft')}
+                        disabled={loading || !title} // Minimum requirement: Title
+                        className="bg-white text-black hover:bg-zinc-200 transition-all h-12 px-6 rounded-md font-bold"
+                    >
+                        {loading ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Save className="mr-2 h-4 w-4" />}
+                        Save as Draft
+                    </Button>
+
+                    {currentStep < 4 ? (
+                        <Button 
+                            type="button" 
+                            onClick={nextStep}
+                            className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-12 px-8 rounded-md shadow-lg shadow-indigo-500/20"
+                        >
+                            Next Step <ChevronRight className="ml-2" size={16} />
+                        </Button>
+                    ) : (
+                        <Button 
+                            type="button"
+                            onClick={(e) => handleSubmit(e, 'pending')} 
+                            disabled={loading}
+                            className="bg-emerald-500 text-white hover:bg-emerald-400 font-black uppercase tracking-[0.2em] h-12 px-10 rounded-md shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_40px_rgba(52,211,153,0.5)] transition-all text-sm"
+                        >
+                            {loading ? <Loader2 className="animate-spin mr-2" /> : <UploadCloud className="mr-2" size={18} />}
+                            Confirm Submission
+                        </Button>
+                    )}
+                </div>
             </div>
             
             {/* Artist Details Dialog */}

@@ -21,31 +21,38 @@ export default function ProfileForm({ profile }: { profile: any }) {
 
   return (
     <form action={handleSubmit}>
-      <Card>
-        <CardHeader>
-          <CardTitle>Artist Profile</CardTitle>
-          <CardDescription>Update your public artist information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="space-y-2">
-                <Label htmlFor="artistName">Artist Name</Label>
-                <Input id="artistName" name="artistName" defaultValue={profile?.artist_name || ''} placeholder="Stage Name" />
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="fullName">Legal Name</Label>
-                <Input id="fullName" name="fullName" defaultValue={profile?.full_name || ''} placeholder="Legal Name" />
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea id="bio" name="bio" defaultValue={profile?.bio || ''} placeholder="Tell us about yourself..." />
-            </div>
-             <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" value={profile?.email} disabled className="bg-gray-100" />
-            </div>
+      <div className="space-y-6">
+        <Card>
+            <CardHeader>
+            <CardTitle>Artist Profile</CardTitle>
+            <CardDescription>Update your public artist information</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="artistName">Artist Name</Label>
+                    <Input id="artistName" name="artistName" defaultValue={profile?.artist_name || ''} placeholder="Stage Name" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="fullName">Legal Name</Label>
+                    <Input id="fullName" name="fullName" defaultValue={profile?.full_name || ''} placeholder="Legal Name" />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea id="bio" name="bio" defaultValue={profile?.bio || ''} placeholder="Tell us about yourself..." />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" value={profile?.email} disabled className="bg-gray-100" />
+                </div>
+            </CardContent>
+        </Card>
 
-            <div className="pt-4 border-t">
-                <h3 className="text-lg font-medium mb-4">Payment Details</h3>
+        <Card>
+            <CardHeader>
+                <CardTitle>Bank & Tax Details</CardTitle>
+                <CardDescription>Required for processing payouts</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                     <div className="space-y-2">
                         <Label htmlFor="bankName">Bank Name</Label>
@@ -64,12 +71,12 @@ export default function ProfileForm({ profile }: { profile: any }) {
                         <Input id="panNumber" name="panNumber" defaultValue={profile?.pan_number || ''} placeholder="ABCDE1234F" />
                     </div>
                 </div>
-            </div>
-        </CardContent>
-        <CardFooter>
-            <Button type="submit">Save Changes</Button>
-        </CardFooter>
-      </Card>
+            </CardContent>
+            <CardFooter>
+                 <Button type="submit" className="w-full sm:w-auto">Save All Changes</Button>
+            </CardFooter>
+        </Card>
+      </div>
     </form>
   )
 }

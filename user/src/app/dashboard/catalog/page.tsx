@@ -1,6 +1,5 @@
 import { createClient } from '@/utils/supabase/server'
-import TrackList from '../track-list'
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import CatalogClient from './catalog-client'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 
@@ -34,17 +33,7 @@ export default async function CatalogPage() {
             </div>
         </div>
 
-        <Card className="bg-white/[0.03] backdrop-blur-3xl border-white/20 shadow-2xl relative overflow-hidden">
-            <CardHeader className="border-b border-white/10 pb-4">
-                <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.25em] flex items-center gap-2">
-                    Active Catalog
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]" />
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-                <TrackList tracks={tracks || []} />
-            </CardContent>
-        </Card>
+        <CatalogClient initialTracks={tracks || []} />
     </div>
   )
 }

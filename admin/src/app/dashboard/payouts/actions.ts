@@ -11,6 +11,10 @@ export async function approvePayout(requestId: string) {
     const { data: admin } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
     if (admin?.role !== 'admin') throw new Error('Unauthorized')
 
+    // Get Request
+    const { data: request } = await supabase.from('payout_requests').select('*').eq('id', requestId).single()
+    if (!request) throw new Error("Request not found")
+
     // Update Request Status
     const { error } = await supabase
         .from('payout_requests')
@@ -18,6 +22,22 @@ export async function approvePayout(requestId: string) {
         .eq('id', requestId)
         
     if (error) throw new Error(error.message)
+
+    // Update Transaction Status (Best effort: Find latest pending withdrawal for this user)
+    // In a production system, we'd link via transaction_id
+    const { data: tx } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', request.user_id)
+        .eq('type', 'withdrawal')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+    
+    if (tx) {
+        await supabase.from('transactions').update({ status: 'completed', description: 'Withdrawal Completed' }).eq('id', tx.id)
+    }
 
     revalidatePath('/dashboard/payouts')
 }
@@ -53,13 +73,37 @@ export async function rejectPayout(requestId: string) {
         
     if (refundError) throw new Error("Failed to refund balance")
 
-    // 3. Update Request Status
+    // 3. Log Refund Transaction
+    await supabase.from('transactions').insert({
+        user_id: request.user_id,
+        amount: request.amount, // Credit back
+        type: 'adjustment',
+        description: `Refund for Rejected Payout #${requestId.slice(0, 8)}`,
+        status: 'completed'
+    })
+
+    // 4. Update Request Status
     const { error } = await supabase
         .from('payout_requests')
         .update({ status: 'rejected' })
         .eq('id', requestId)
 
     if (error) throw new Error(error.message)
+
+    // Also mark the original transaction as failed if found
+    const { data: tx } = await supabase
+        .from('transactions')
+        .select('id')
+        .eq('user_id', request.user_id)
+        .eq('type', 'withdrawal')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+    
+    if (tx) {
+        await supabase.from('transactions').update({ status: 'failed' }).eq('id', tx.id)
+    }
 
     revalidatePath('/dashboard/payouts')
 }

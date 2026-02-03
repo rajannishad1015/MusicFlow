@@ -10,7 +10,21 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Play, Pause, AlertCircle, Edit2 } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { useState } from "react"
+import { Play, Pause, AlertCircle, Edit2, Trash2, ShieldAlert } from 'lucide-react'
+import { requestTakedown, deleteTrack } from "./actions"
+import { toast } from "sonner"
 import {
   Tooltip,
   TooltipContent,
@@ -20,6 +34,11 @@ import {
 import Link from 'next/link'
 
 export default function TrackList({ tracks }: { tracks: any[] }) {
+  const [isTakedownOpen, setIsTakedownOpen] = useState(false)
+  const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null)
+  const [takedownReason, setTakedownReason] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   if (tracks.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -37,14 +56,50 @@ export default function TrackList({ tracks }: { tracks: any[] }) {
         approved: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]",
         rejected: "bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_10px_rgba(239,68,68,0.1)]",
         pending: "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.1)]",
-        draft: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.1)]"
+        draft: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-[0_0_10px_rgba(99,102,241,0.1)]",
+        takedown_requested: "bg-orange-500/10 text-orange-400 border-orange-500/20"
     }[status] || "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
 
     return (
         <Badge className={`uppercase text-[9px] font-black tracking-widest border px-2 py-0.5 rounded-full backdrop-blur-md transition-all hover:scale-105 ${styles}`}>
-            {status}
+            {status === 'takedown_requested' ? 'Takedown Pending' : status}
         </Badge>
     );
+  }
+
+  const openTakedownDialog = (trackId: string) => {
+      setSelectedTrackId(trackId)
+      setTakedownReason('')
+      setIsTakedownOpen(true)
+  }
+
+  const submitTakedown = async () => {
+      if (!selectedTrackId) return
+      if (!takedownReason || takedownReason.trim().length < 5) {
+          toast.error("Please provide a valid reason (min 5 characters)")
+          return
+      }
+
+      setIsSubmitting(true)
+      try {
+          await requestTakedown(selectedTrackId, takedownReason)
+          toast.success("Takedown request submitted")
+          setIsTakedownOpen(false)
+      } catch (err: any) {
+          toast.error(err.message || "Failed to request takedown")
+      } finally {
+          setIsSubmitting(false)
+      }
+  }
+
+  const handleDelete = async (trackId: string) => {
+      if (!confirm("Are you sure you want to PERMANENTLY delete this release? This cannot be undone.")) return;
+      try {
+          await deleteTrack(trackId)
+          toast.success("Release deleted successfully")
+      } catch (err: any) {
+          toast.error(err.message || "Failed to delete release")
+      }
   }
 
   return (
@@ -104,17 +159,70 @@ export default function TrackList({ tracks }: { tracks: any[] }) {
                         </TableCell>
                         <TableCell>
                              {(track.status === 'draft' || track.status === 'rejected') && (
-                                <Link href={`/dashboard/tracks/${track.id}`}>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white hover:bg-white/10 rounded-full">
-                                        <Edit2 size={14} />
+                                <div className="flex items-center gap-1">
+                                    <Link href={`/dashboard/tracks/${track.id}`}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-zinc-500 hover:text-white hover:bg-white/10 rounded-full">
+                                            <Edit2 size={14} />
+                                        </Button>
+                                    </Link>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleDelete(track.id)}
+                                        className="h-8 w-8 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-full"
+                                        title="Delete Release"
+                                    >
+                                        <Trash2 size={14} />
                                     </Button>
-                                </Link>
+                                </div>
+                             )}
+                             {track.status === 'approved' && (
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => openTakedownDialog(track.id)}
+                                    className="h-8 w-8 text-zinc-500 hover:text-amber-500 hover:bg-amber-500/10 rounded-full"
+                                    title="Request Takedown"
+                                >
+                                    <ShieldAlert size={14} />
+                                </Button>
                              )}
                         </TableCell>
                     </TableRow>
                 ))}
             </TableBody>
         </Table>
+
+        <Dialog open={isTakedownOpen} onOpenChange={setIsTakedownOpen}>
+            <DialogContent className="sm:max-w-[425px] bg-zinc-950 border-white/10 text-white">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2 text-amber-500">
+                        <ShieldAlert size={20} /> Request Takedown
+                    </DialogTitle>
+                    <DialogDescription className="text-zinc-400">
+                        Are you sure you want to take down this release? This action will notify the admin team.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="reason" className="text-zinc-300">Reason for removal</Label>
+                        <Textarea
+                            id="reason"
+                            value={takedownReason}
+                            onChange={(e) => setTakedownReason(e.target.value)}
+                            placeholder="Please explain why you want to take down this release..."
+                            className="bg-white/5 border-white/10 text-white min-h-[100px]"
+                        />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsTakedownOpen(false)} className="text-zinc-400 hover:text-white">Cancel</Button>
+                    <Button onClick={submitTakedown} disabled={isSubmitting} className="bg-amber-600 hover:bg-amber-500 text-white">
+                        {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   )
 }

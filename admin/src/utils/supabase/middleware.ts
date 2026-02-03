@@ -48,6 +48,32 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  // If user is logged in, verify they are an admin and not active
+  if (user && !request.nextUrl.pathname.startsWith('/login')) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, status')
+        .eq('id', user.id)
+        .single()
+      
+      if (!profile || profile.role !== 'admin') {
+           // Not an admin, sign out and redirect
+           await supabase.auth.signOut()
+           const url = request.nextUrl.clone()
+           url.pathname = '/login' // Or a 403 page
+           return NextResponse.redirect(url)
+      }
+
+      if (profile.status === 'banned' || profile.status === 'suspended') {
+           // Banned user
+           await supabase.auth.signOut()
+           const url = request.nextUrl.clone()
+           url.pathname = '/login'
+           url.searchParams.set('error', 'Your account has been suspended.')
+           return NextResponse.redirect(url)
+      }
+  }
+
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
   // creating a new response object with NextResponse.next() make sure to:
   // 1. Pass the request in it, like so:

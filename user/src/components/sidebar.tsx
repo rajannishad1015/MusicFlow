@@ -57,7 +57,7 @@ export default function Sidebar({ user, signOut }: { user: any, signOut: () => P
                 <p className="px-4 text-[9px] font-semibold text-zinc-600 uppercase tracking-[0.15em] mb-3">Enterprise</p>
                 <NavItem href="/dashboard/reports" icon={FileBarChart} label="Analytics" active={pathname === '/dashboard/reports'} />
                 <NavItem href="/dashboard/withdraw" icon={CreditCard} label="Finance" active={pathname === '/dashboard/withdraw'} />
-                <NavItem href="/dashboard/tickets" icon={Ticket} label="Support" active={pathname === '/dashboard/tickets'} />
+                <NavItem href="/dashboard/support" icon={Ticket} label="Support" active={pathname?.startsWith('/dashboard/support')} />
 
                 {/* Section Divider */}
                 <div className="py-4 px-4">
