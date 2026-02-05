@@ -56,7 +56,7 @@ export default function Sidebar({ user, signOut, pendingTickets }: { user: any, 
                 <div className="h-6" />
                 <p className="px-4 text-[9px] font-semibold text-zinc-600 uppercase tracking-[0.15em] mb-3">Enterprise</p>
                 <NavItem href="/dashboard/reports" icon={FileBarChart} label="Analytics" active={pathname === '/dashboard/reports'} />
-                <NavItem href="/dashboard/withdraw" icon={CreditCard} label="Finance" active={pathname === '/dashboard/withdraw'} />
+                <NavItem href="/dashboard/finance" icon={CreditCard} label="Finance" active={pathname === '/dashboard/finance'} />
                 <div className="relative">
                     <NavItem href="/dashboard/support" icon={Ticket} label="Support" active={pathname?.startsWith('/dashboard/support')} />
                     {pendingTickets > 0 && (

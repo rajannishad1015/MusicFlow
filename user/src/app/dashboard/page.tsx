@@ -24,7 +24,14 @@ export default async function DashboardPage() {
     .eq('id', user?.id)
     .single()
 
-  // 2. Aggregate Stats
+  // 2. Fetch Support Tickets Stats
+  const { count: ticketCount } = await supabase
+    .from('tickets')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', user?.id)
+    .in('status', ['open', 'in_progress'])
+
+  // 3. Aggregate Stats
   const allTracks = tracks || []
   const totalReleases = allTracks.length
   const approvedCount = allTracks.filter(t => t.status === 'approved').length
@@ -59,7 +66,7 @@ export default async function DashboardPage() {
       total: totalReleases,
       approved: approvedCount,
       revenue: Number(profile?.balance || 0),
-      tickets: 0, // Placeholder
+      tickets: ticketCount || 0,
       statusCounts,
       genres
   }

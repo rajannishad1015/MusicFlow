@@ -37,6 +37,30 @@ export async function adminReplyTx(formData: FormData) {
     attachment_url: attachmentUrl
   })
 
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  // Notify Artist (if not internal note)
+  if (!isInternal) {
+      const { data: ticket } = await supabase
+          .from('tickets')
+          .select('artist_id, subject')
+          .eq('id', ticketId)
+          .single()
+
+      if (ticket) {
+          await supabase.from('notifications').insert({
+              user_id: ticket.artist_id,
+              type: 'support_reply',
+              title: 'Support Reply',
+              message: `You have a new message regarding: ${ticket.subject}`,
+              link: `/dashboard/support/${ticketId}`,
+              is_read: false
+          })
+      }
+  }
+
   revalidatePath(`/dashboard/support/${ticketId}`)
   revalidatePath('/dashboard/support')
 }

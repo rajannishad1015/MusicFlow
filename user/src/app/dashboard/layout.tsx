@@ -2,7 +2,7 @@ import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import { Toaster } from "@/components/ui/sonner"
 import Sidebar from '@/components/sidebar'
-import NotificationsPopover from '@/components/notifications-popover'
+import NotificationCenter from '@/components/notification-center'
 
 export default async function DashboardLayout({
   children,
@@ -43,12 +43,12 @@ export default async function DashboardLayout({
                {/* Search or Breadcrumbs could go here */}
             </div>
             <div className="flex items-center gap-4">
-                <NotificationsPopover />
+                <NotificationCenter />
             </div>
         </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-10 relative">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-10 relative">
              <div className="space-y-12">
                {children}
              </div>

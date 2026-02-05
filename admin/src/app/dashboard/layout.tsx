@@ -130,7 +130,7 @@ export default async function DashboardLayout({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 bg-transparent p-0 overflow-y-auto relative z-10 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+      <div className="flex-1 bg-transparent p-0 overflow-y-auto overflow-x-hidden relative z-10 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
         <div className="max-w-7xl mx-auto p-8">
             {children}
         </div>

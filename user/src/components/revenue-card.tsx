@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useState } from "react"
+import Link from "next/link"
 import { DollarSign, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { createWithdrawalRequest } from "@/app/dashboard/actions"
@@ -54,12 +55,18 @@ export default function RevenueCard({ balance, currency = '$' }: { balance: numb
                         </div>
                     </div>
                     
-                    <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="secondary" size="sm" className="bg-white text-black hover:bg-indigo-500 hover:text-white font-black text-[10px] uppercase tracking-[0.2em] h-8 px-4 rounded-full shadow-lg transition-all">
-                                Withdraw
+                    <div className="flex items-center gap-2">
+                        <Link href="/dashboard/finance">
+                            <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-white font-black text-[10px] uppercase tracking-[0.2em] h-8 px-4 rounded-full transition-all">
+                                History
                             </Button>
-                        </DialogTrigger>
+                        </Link>
+                        <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="secondary" size="sm" className="bg-white text-black hover:bg-indigo-500 hover:text-white font-black text-[10px] uppercase tracking-[0.2em] h-8 px-4 rounded-full shadow-lg transition-all">
+                                    Withdraw
+                                </Button>
+                            </DialogTrigger>
                         <DialogContent className="sm:max-w-[425px] bg-zinc-950 border-white/10 text-white">
                             <DialogHeader>
                                 <DialogTitle className="text-white">Request Withdrawal</DialogTitle>
@@ -97,7 +104,8 @@ export default function RevenueCard({ balance, currency = '$' }: { balance: numb
                         </DialogContent>
                     </Dialog>
                 </div>
-            </CardContent>
+            </div>
+        </CardContent>
         </Card>
     )
 }

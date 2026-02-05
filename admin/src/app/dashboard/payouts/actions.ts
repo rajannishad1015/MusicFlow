@@ -39,6 +39,16 @@ export async function approvePayout(requestId: string) {
         await supabase.from('transactions').update({ status: 'completed', description: 'Withdrawal Completed' }).eq('id', tx.id)
     }
 
+    // Notify User
+    await supabase.from('notifications').insert({
+        user_id: request.user_id,
+        type: 'payment',
+        title: 'Payout Approved',
+        message: `Your withdrawal request for $${request.amount.toFixed(2)} has been approved and processed.`,
+        link: '/dashboard/finance',
+        is_read: false
+    })
+
     revalidatePath('/dashboard/payouts')
 }
 
@@ -104,6 +114,16 @@ export async function rejectPayout(requestId: string) {
     if (tx) {
         await supabase.from('transactions').update({ status: 'failed' }).eq('id', tx.id)
     }
+
+    // Notify User
+    await supabase.from('notifications').insert({
+        user_id: request.user_id,
+        type: 'payment',
+        title: 'Payout Rejected',
+        message: `Your withdrawal request for $${request.amount.toFixed(2)} was rejected. The funds have been refunded to your wallet.`,
+        link: '/dashboard/finance',
+        is_read: false
+    })
 
     revalidatePath('/dashboard/payouts')
 }

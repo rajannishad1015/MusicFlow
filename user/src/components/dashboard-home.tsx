@@ -59,7 +59,7 @@ export default function DashboardHome({
     return (
         <div className="space-y-12">
             {/* 1. Cinematic KPI Row */}
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 relative">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 relative overflow-hidden p-1">
                 {/* Background Glows */}
                 <div className="absolute -inset-20 bg-indigo-500/5 blur-[120px] pointer-events-none rounded-full" />
                 

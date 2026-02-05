@@ -44,7 +44,7 @@ export async function updateTrackStatus(trackId: string, status: 'approved' | 'r
   if (status === 'rejected') {
     await supabase.from('notifications').insert({
       user_id: track.artist_id,
-      type: 'rejection',
+      type: 'upload_status',
       title: `Action Required: ${track.title}`,
       message: reason || 'Your release has been rejected. Please check the details and resubmit.',
       link: '/dashboard/catalog',
@@ -53,7 +53,7 @@ export async function updateTrackStatus(trackId: string, status: 'approved' | 'r
   } else if (status === 'approved') {
     await supabase.from('notifications').insert({
       user_id: track.artist_id,
-      type: 'system', // or 'message'
+      type: 'upload_status',
       title: `Release Approved: ${track.title}`,
       message: 'Congratulations! Your release has been approved and sent to stores.',
       link: '/dashboard/catalog',
