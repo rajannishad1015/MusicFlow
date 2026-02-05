@@ -7,33 +7,69 @@ export async function adminReplyTx(formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   
+  if (!user) {
+      throw new Error('Unauthorized')
+  }
+  
   // Check Admin
-  const { data: admin } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
+  const { data: admin } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (admin?.role !== 'admin') throw new Error('Unauthorized')
 
   const ticketId = formData.get('ticketId') as string
   const message = formData.get('message') as string
   const isInternal = formData.get('isInternal') === 'on'
+  const attachment = formData.get('attachment') as File | null
 
   if (!ticketId || !message) throw new Error('Missing fields')
 
-  await supabase.from('ticket_messages').insert({
+  // Upload Attachment (if present)
+  let attachmentUrl = null
+  if (attachment && attachment.size > 0) {
+    attachmentUrl = await uploadAttachment(attachment, supabase)
+  }
+
+  const { error } = await supabase.from('ticket_messages').insert({
     ticket_id: ticketId,
     sender_id: user.id,
-    message,
-    is_internal: isInternal
+    message: message,
+    is_admin: true, // Admin is sending
+    is_internal: isInternal, // Support internal notes
+    attachment_url: attachmentUrl
   })
 
   revalidatePath(`/dashboard/support/${ticketId}`)
   revalidatePath('/dashboard/support')
 }
 
+async function uploadAttachment(file: File, supabase: any) {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+        .from('support-attachments')
+        .upload(filePath, file)
+
+    if (uploadError) {
+        console.error('Upload Error:', uploadError)
+        return null
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from('support-attachments')
+        .getPublicUrl(filePath)
+    
+    return publicUrl
+}
+
 export async function updateTicketStatus(formData: FormData) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
+    if (!user) throw new Error('Unauthorized')
+
     // Check Admin
-    const { data: admin } = await supabase.from('profiles').select('role').eq('id', user?.id).single()
+    const { data: admin } = await supabase.from('profiles').select('role').eq('id', user.id).single()
     if (admin?.role !== 'admin') throw new Error('Unauthorized')
 
     const ticketId = formData.get('ticketId') as string

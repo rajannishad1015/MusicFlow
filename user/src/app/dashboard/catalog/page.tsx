@@ -7,11 +7,20 @@ export default async function CatalogPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: tracks } = await supabase
+  if (!user) {
+    return <div>Please log in</div>
+  }
+
+  const { data: tracks, error } = await supabase
     .from('tracks')
     .select('*, albums(cover_art_url, title)')
-    .eq('artist_id', user?.id)
+    .eq('artist_id', user.id)
     .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching tracks:', error)
+    // Return empty array or handle error UI
+  }
 
   return (
     <div className="space-y-8">

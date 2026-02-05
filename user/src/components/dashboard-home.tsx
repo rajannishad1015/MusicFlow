@@ -130,8 +130,8 @@ export default function DashboardHome({
                     <CardContent className="p-8">
                         <div className="flex flex-col gap-10">
                             {/* Pro Cinematic Donut */}
-                            <div className="h-[200px] w-full relative">
-                                <ResponsiveContainer width="100%" height="100%">
+                            <div className="h-[200px] w-full relative" style={{ width: '100%', height: 200 }}>
+                                <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0} debounce={1}>
                                     <PieChart>
                                         <Pie
                                             data={statusData}
@@ -212,8 +212,8 @@ export default function DashboardHome({
                         </div>
                     </CardHeader>
                     <CardContent className="p-4 relative z-10">
-                        <div className="h-[300px] w-full flex items-center justify-center">
-                            <ResponsiveContainer width="100%" height="100%">
+                        <div className="h-[300px] w-full flex items-center justify-center" style={{ width: '100%', height: 300 }}>
+                            <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0} debounce={1}>
                                 <RadarChart cx="50%" cy="50%" outerRadius="70%" data={stats.genres.length > 2 ? stats.genres : [...stats.genres, { genre: '', count: 0 }, { genre: '', count: 0 }]}>
                                     <PolarGrid gridType="polygon" stroke="rgba(255,255,255,0.1)" />
                                     <PolarAngleAxis 

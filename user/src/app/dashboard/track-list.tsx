@@ -129,7 +129,10 @@ export default function TrackList({ tracks }: { tracks: any[] }) {
                         <TableCell>
                             <div className="flex flex-col">
                                 <span className="font-bold text-white tracking-tight group-hover:text-indigo-400 transition-colors">{track.title}</span>
-                                <span className="text-[10px] text-zinc-600 font-mono mt-1">ISRC: {track.id.substring(0, 8).toUpperCase()}...</span>
+                                <span className="text-[10px] text-zinc-500 font-mono mt-1 flex items-center gap-2">
+                                    <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5">ID: {track.id.substring(0, 8).toUpperCase()}</span>
+                                    {track.isrc && <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/5 text-zinc-400">ISRC: {track.isrc}</span>}
+                                </span>
                             </div>
                         </TableCell>
                         <TableCell>

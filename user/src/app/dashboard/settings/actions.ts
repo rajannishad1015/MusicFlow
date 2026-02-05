@@ -12,6 +12,8 @@ export async function updateProfile(formData: FormData) {
   const fullName = formData.get('fullName') as string
   const artistName = formData.get('artistName') as string
   const bio = formData.get('bio') as string
+  const phone = formData.get('phone') as string
+  const address = formData.get('address') as string
   const bankName = formData.get('bankName') as string
   const accountNumber = formData.get('accountNumber') as string
   const ifscCode = formData.get('ifscCode') as string
@@ -23,6 +25,8 @@ export async function updateProfile(formData: FormData) {
         full_name: fullName,
         artist_name: artistName,
         bio: bio,
+        phone,
+        address,
         bank_name: bankName,
         account_number: accountNumber,
         ifsc_code: ifscCode,
@@ -36,4 +40,36 @@ export async function updateProfile(formData: FormData) {
   }
 
   revalidatePath('/dashboard/settings')
+}
+
+export async function changePassword(formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('Unauthorized')
+
+  const password = formData.get('password') as string
+  const confirmPassword = formData.get('confirmPassword') as string
+
+  if (!password || !confirmPassword) {
+    throw new Error('All fields are required')
+  }
+
+  if (password !== confirmPassword) {
+    throw new Error('Passwords do not match')
+  }
+
+  if (password.length < 6) {
+    throw new Error('Password must be at least 6 characters')
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: password
+  })
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return { success: true }
 }

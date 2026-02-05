@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/utils/supabase/server'
+import { createAdminClient } from '@/utils/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
 async function checkAdmin() {
@@ -55,7 +56,8 @@ export async function getUserTracks(userId: string) {
         *,
         albums (title, upc, release_date)
     `)
-    .eq('user_id', userId)
+    // The schema uses 'artist_id' as the foreign key to profiles, not 'user_id'
+    .eq('artist_id', userId)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
@@ -73,4 +75,29 @@ export async function getTransactionHistory(userId: string) {
 
   if (error) throw new Error(error.message)
   return data
+}
+
+export async function impersonateUser(userId: string) {
+  const supabase = await checkAdmin()
+  
+  // Get Target User Email
+  const { data: profile } = await supabase.from('profiles').select('email').eq('id', userId).single()
+  if (!profile?.email) throw new Error("User email not found")
+
+  const adminClient = createAdminClient()
+  
+  // Determine Redirect URL (User App)
+  // Assuming User App runs on port 3000 locally
+  const redirectTo = process.env.NEXT_PUBLIC_USER_APP_URL || 'http://localhost:3000/dashboard'
+
+  const { data, error } = await adminClient.auth.admin.generateLink({
+    type: 'magiclink',
+    email: profile.email,
+    options: {
+        redirectTo
+    }
+  })
+
+  if (error) throw new Error(error.message)
+  return data.properties?.action_link
 }

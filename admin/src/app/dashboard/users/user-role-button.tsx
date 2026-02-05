@@ -39,6 +39,12 @@ export default function UserRoleButton({ userId, currentRole, currentUserId }: U
             size="sm"
             onClick={handleToggle}
             disabled={userId === currentUserId || isPending}
+            className={`
+                h-8 text-xs font-bold uppercase tracking-wider border transition-all
+                ${currentRole === 'admin' 
+                    ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 hover:bg-amber-500 hover:text-white' 
+                    : 'bg-zinc-900 border-white/10 text-zinc-400 hover:text-white hover:bg-zinc-800'}
+            `}
         >
             {isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
             {currentRole === 'admin' ? 'Demote' : 'Make Admin'}

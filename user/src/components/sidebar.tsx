@@ -23,7 +23,7 @@ import {
 import { useState } from 'react'
 import { Button } from './ui/button'
 
-export default function Sidebar({ user, signOut }: { user: any, signOut: () => Promise<void> }) {
+export default function Sidebar({ user, signOut, pendingTickets }: { user: any, signOut: () => Promise<void>, pendingTickets: number }) {
     const pathname = usePathname()
 
     return (
@@ -57,7 +57,15 @@ export default function Sidebar({ user, signOut }: { user: any, signOut: () => P
                 <p className="px-4 text-[9px] font-semibold text-zinc-600 uppercase tracking-[0.15em] mb-3">Enterprise</p>
                 <NavItem href="/dashboard/reports" icon={FileBarChart} label="Analytics" active={pathname === '/dashboard/reports'} />
                 <NavItem href="/dashboard/withdraw" icon={CreditCard} label="Finance" active={pathname === '/dashboard/withdraw'} />
-                <NavItem href="/dashboard/support" icon={Ticket} label="Support" active={pathname?.startsWith('/dashboard/support')} />
+                <div className="relative">
+                    <NavItem href="/dashboard/support" icon={Ticket} label="Support" active={pathname?.startsWith('/dashboard/support')} />
+                    {pendingTickets > 0 && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 bg-rose-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-lg shadow-rose-500/20 animate-pulse">
+                            {pendingTickets}
+                        </span>
+                    )}
+                </div>
+                <NavItem href="/dashboard/settings" icon={Wrench} label="Settings" active={pathname === '/dashboard/settings'} />
 
                 {/* Section Divider */}
                 <div className="py-4 px-4">

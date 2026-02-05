@@ -15,6 +15,7 @@ export async function createTicket(formData: FormData) {
   const category = formData.get('category') as string
   const priority = formData.get('priority') as string
   const message = formData.get('message') as string
+  const attachment = formData.get('attachment') as File | null
 
   if (!subject || !category || !priority || !message) {
     throw new Error('All fields are required')
@@ -38,19 +39,25 @@ export async function createTicket(formData: FormData) {
     throw new Error('Failed to create ticket')
   }
 
-  // 2. Create Initial Message
+  // 2. Upload Attachment (if present)
+  let attachmentUrl = null
+  if (attachment && attachment.size > 0) {
+    attachmentUrl = await uploadAttachment(attachment, supabase)
+  }
+
+  // 3. Create Initial Message
   const { error: messageError } = await supabase
     .from('ticket_messages')
     .insert({
       ticket_id: ticket.id,
       sender_id: user.id,
       message,
-      is_internal: false
+      is_internal: false,
+      attachment_url: attachmentUrl
     })
 
   if (messageError) {
     console.error('Message creation error:', messageError)
-    // Optional: cleanup ticket if message fails
     throw new Error('Failed to create ticket message')
   }
 
@@ -66,6 +73,7 @@ export async function replyTx(formData: FormData) {
 
   const ticketId = formData.get('ticketId') as string
   const message = formData.get('message') as string
+  const attachment = formData.get('attachment') as File | null
 
   if (!ticketId || !message) throw new Error('Missing fields')
 
@@ -78,13 +86,41 @@ export async function replyTx(formData: FormData) {
   
   if (ticket?.user_id !== user.id) throw new Error('Unauthorized')
 
+  // Upload Attachment (if present)
+  let attachmentUrl = null
+  if (attachment && attachment.size > 0) {
+    attachmentUrl = await uploadAttachment(attachment, supabase)
+  }
+
   await supabase.from('ticket_messages').insert({
     ticket_id: ticketId,
     sender_id: user.id,
     message,
-    is_internal: false
+    is_internal: false,
+    attachment_url: attachmentUrl
   })
 
   revalidatePath(`/dashboard/support/${ticketId}`)
   revalidatePath('/dashboard/support')
+}
+
+async function uploadAttachment(file: File, supabase: any) {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+        .from('support-attachments')
+        .upload(filePath, file)
+
+    if (uploadError) {
+        console.error('Upload Error:', uploadError)
+        return null
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from('support-attachments')
+        .getPublicUrl(filePath)
+    
+    return publicUrl
 }

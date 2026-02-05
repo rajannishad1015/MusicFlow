@@ -107,6 +107,7 @@ export default function LoginPage() {
                     placeholder="artist@example.com" 
                     required 
                     className="h-14 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-black focus:ring-0 rounded-none transition-all"
+                    autoComplete="email"
                   />
                 </div>
 
@@ -121,6 +122,7 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required 
                     className="h-14 bg-gray-50 border-gray-200 text-gray-900 placeholder:text-gray-400 focus:border-black focus:ring-0 rounded-none transition-all"
+                    autoComplete="current-password"
                   />
                 </div>
 

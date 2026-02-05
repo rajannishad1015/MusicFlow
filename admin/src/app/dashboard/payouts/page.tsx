@@ -1,7 +1,8 @@
 import { createClient } from '@/utils/supabase/server'
 import PayoutList from './payout-list'
 import Link from 'next/link'
-import { DollarSign, Clock, CheckCircle2, XCircle } from 'lucide-react'
+import { DollarSign, Clock, CheckCircle2, XCircle, Upload } from 'lucide-react'
+import { Button } from "@/components/ui/button"
 
 export default async function PayoutsPage({ searchParams }: { searchParams: { status?: string } }) {
   const supabase = await createClient()
@@ -42,6 +43,11 @@ export default async function PayoutsPage({ searchParams }: { searchParams: { st
           <h1 className="text-3xl font-bold tracking-tight">Payout Requests</h1>
           <p className="text-gray-500 mt-1">Review and process artist withdrawal requests.</p>
         </div>
+        <Link href="/dashboard/payouts/upload">
+            <Button variant="outline" className="gap-2">
+                <Upload size={16} /> Import Report
+            </Button>
+        </Link>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

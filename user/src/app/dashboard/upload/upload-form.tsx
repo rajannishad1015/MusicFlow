@@ -222,14 +222,67 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
   const years = Array.from({ length: currentYearInt - 1900 + 1 }, (_, i) => (currentYearInt - i).toString())
 
 
-  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Audio Validation State
+  const [audioAnalysis, setAudioAnalysis] = useState<{
+      bitrate: number
+      sampleRate: number
+      channels: number
+      format: string
+      duration: number
+  } | null>(null)
+  
+  const handleAudioChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      setAudioFile(file)
-      const audio = new Audio(URL.createObjectURL(file))
-      audio.onloadedmetadata = () => {
-        setDuration(Math.round(audio.duration))
-      }
+        // Validate Format (Client-side extension check first)
+        const allowedExtensions = ['wav', 'flac', 'mp3']
+        const ext = file.name.split('.').pop()?.toLowerCase()
+        if (!ext || !allowedExtensions.includes(ext)) {
+            toast.error("Invalid file format. Please upload WAV, FLAC, or MP3.")
+            e.target.value = '' // Clear input
+            return
+        }
+
+       try {
+           const parseBlob = await import('music-metadata-browser').then(m => m.parseBlob)
+           const metadata = await parseBlob(file)
+           
+           const format = metadata.format
+           const bitrate = format.bitrate ? Math.round(format.bitrate / 1000) : 0 // kbps
+           const sampleRate = format.sampleRate || 0
+           const duration = format.duration || 0
+           const channels = format.numberOfChannels || 0
+           
+           // Validation Rules
+           if (bitrate < 128) {
+               toast.error(`Bitrate too low (${bitrate}kbps). Minimum 128kbps required (320kbps recommended).`)
+               e.target.value = ''
+               return
+           }
+           
+           if (duration < 30) {
+               toast.error("Track is too short. Minimum 30 seconds required.")
+               e.target.value = ''
+               return
+           }
+
+           // If all good
+           setAudioFile(file)
+           setDuration(Math.round(duration))
+           setAudioAnalysis({
+               bitrate,
+               sampleRate,
+               channels,
+               format: ext.toUpperCase(),
+               duration
+           })
+           toast.success("Audio analysis passed!")
+
+       } catch (error) {
+           console.error("Audio analysis failed", error)
+           toast.error("Failed to analyze audio file. Please ensure it is a valid audio file.")
+           e.target.value = ''
+       }
     }
   }
 
@@ -353,7 +406,8 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
             audioUrl,
             coverArtUrl,
             releaseDate,
-            status: status
+            status: status,
+            audioAnalysis // Pass entire object
         }
 
         const result = await submitTrack(formData)

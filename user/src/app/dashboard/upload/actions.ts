@@ -143,7 +143,14 @@ export async function submitTrack(formData: any) {
             primary_artist_spotify_id: formData.trackPrimaryArtistSpotify,
             primary_artist_apple_id: formData.trackPrimaryArtistApple,
             featuring_artist_spotify_id: formData.trackFeaturingArtistSpotify,
-            featuring_artist_apple_id: formData.trackFeaturingArtistApple
+            featuring_artist_apple_id: formData.trackFeaturingArtistApple,
+
+            // Tech Metadata
+            bitrate: formData.audioAnalysis?.bitrate,
+            sample_rate: formData.audioAnalysis?.sampleRate,
+            channels: formData.audioAnalysis?.channels,
+            encoding: formData.audioAnalysis?.format, // e.g., 'MP3'
+            file_size: 0 // We could get this from file size if passed, skipping for now or adding prop
         })
     
     // If draft, do not send notification/email logic (if we had it)

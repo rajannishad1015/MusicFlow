@@ -2,7 +2,10 @@
 
 import { createClient } from '@/utils/supabase/server'
 
-export async function getExportData(status: string = 'approved') {
+export async function getExportData(
+    status: string = 'approved',
+    filters?: { startDate?: string, endDate?: string, genre?: string }
+) {
   const supabase = await createClient()
   
   // Verify admin
@@ -12,8 +15,8 @@ export async function getExportData(status: string = 'approved') {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (profile?.role !== 'admin') throw new Error('Access Denied')
 
-  // Fetch tracks based on status (or all if not specified? For now let's enforce status to match view)
-  const { data: tracks, error } = await supabase
+  // Build Query
+  let query = supabase
     .from('tracks')
     .select(`
         *,
@@ -47,6 +50,23 @@ export async function getExportData(status: string = 'approved') {
     `)
     .eq('status', status)
     .order('created_at', { ascending: false })
+
+  if (filters?.startDate) {
+      query = query.gte('created_at', filters.startDate)
+  }
+  
+  if (filters?.endDate) {
+      // Add one day to include the end date fully (since date inputs are YYYY-MM-DD 00:00:00)
+      const nextDay = new Date(filters.endDate)
+      nextDay.setDate(nextDay.getDate() + 1)
+      query = query.lt('created_at', nextDay.toISOString())
+  }
+
+  if (filters?.genre && filters.genre.trim() !== '') {
+      query = query.ilike('genre', `%${filters.genre.trim()}%`)
+  }
+
+  const { data: tracks, error } = await query
 
   if (error) throw new Error(error.message)
   return tracks

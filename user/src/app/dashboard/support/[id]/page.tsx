@@ -2,21 +2,25 @@ import { createClient } from '@/utils/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, Send, Clock, User, Shield } from 'lucide-react'
+import { ChevronLeft, Send, Clock, User, Shield, Lock, Link as LinkIcon, XCircle } from 'lucide-react'
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { replyTx } from './actions'
+import { replyTx } from '../actions'
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import ReplyForm from './reply-form'
+// AttachmentPreview is internal to ChatInterface now
+import ChatInterface from './chat-interface'
 
-export default async function TicketPage({ params }: { params: { id: string } }) {
+export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const { id } = await params
 
   // Fetch Ticket
   const { data: ticket } = await supabase
     .from('tickets')
     .select('*, profiles(full_name, artist_name, email)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single()
 
   if (!ticket) return notFound()
@@ -43,80 +47,68 @@ export default async function TicketPage({ params }: { params: { id: string } })
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col">
-       {/* Header */}
-       <div className="flex items-center gap-4 mb-6 shrink-0">
-            <Link href="/dashboard/support">
-                <Button variant="ghost" size="icon" className="hover:bg-white/5">
-                    <ChevronLeft size={20} />
-                </Button>
-            </Link>
-            <div className="flex-1">
-                <div className="flex items-center gap-3 mb-1">
-                    <h1 className="text-xl font-bold">{ticket.subject}</h1>
-                    <Badge variant="outline" className={`capitalize ${getStatusBadge(ticket.status)}`}>
-                        {ticket.status.replace('_', ' ')}
-                    </Badge>
+    <div className="h-[calc(100vh-120px)] flex flex-col max-w-5xl mx-auto w-full">
+       {/* Cinematic Header */}
+       <div className="relative overflow-hidden rounded-t-2xl bg-zinc-900 border border-white/5 border-b-0 shrink-0">
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-transparent"></div>
+            <div className="relative z-10 p-4 sm:p-6 flex items-center gap-4">
+                <Link href="/dashboard/support">
+                    <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white hover:bg-white/5 rounded-full">
+                        <ChevronLeft size={20} />
+                    </Button>
+                </Link>
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-1">
+                        <h1 className="text-xl font-bold text-white truncate">{ticket.subject}</h1>
+                        <Badge variant="outline" className={`capitalize shrink-0 ${getStatusBadge(ticket.status)}`}>
+                            {ticket.status.replace('_', ' ')}
+                        </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-zinc-400">
+                        <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
+                            <span className="font-mono text-zinc-500">#</span>
+                            <span className="font-mono">{ticket.id.slice(0, 8)}</span>
+                        </div>
+                        <span>•</span>
+                        <span className="capitalize text-zinc-300">{ticket.category}</span>
+                    </div>
                 </div>
-                <div className="text-sm text-zinc-500 flex items-center gap-2">
-                    <span>Ticket #{ticket.id.slice(0, 8)}</span>
-                    <span>•</span>
-                    <span className="capitalize">{ticket.category}</span>
-                </div>
+                <Link href="/dashboard/support">
+                    <Button variant="ghost" size="icon" className="text-zinc-400 hover:text-white hover:bg-white/5 rounded-full active:scale-95 transition-all">
+                        <XCircle size={24} strokeWidth={1.5} />
+                    </Button>
+                </Link>
             </div>
        </div>
 
        {/* Chat Area */}
-       <div className="flex-1 bg-zinc-900/30 border border-white/5 rounded-xl overflow-hidden flex flex-col">
-            <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
-                <div className="space-y-6">
-                    {messages && messages.map((msg) => {
-                        const isMe = msg.sender_id === user?.id
-                        const isAdmin = msg.profiles?.role === 'admin'
-                        return (
-                            <div key={msg.id} className={`flex gap-3 ${isMe ? 'flex-row-reverse' : ''}`}>
-                                <Avatar className="h-8 w-8 border border-white/10">
-                                    <AvatarFallback className={isAdmin ? 'bg-indigo-500/20 text-indigo-400' : 'bg-zinc-800 text-zinc-400'}>
-                                        {isAdmin ? <Shield size={14} /> : <User size={14} />}
-                                    </AvatarFallback>
-                                </Avatar>
-                                <div className={`flex flex-col max-w-[80%] ${isMe ? 'items-end' : 'items-start'}`}>
-                                    <div className={`flex items-center gap-2 text-xs mb-1 ${isMe ? 'flex-row-reverse' : ''} text-zinc-500`}>
-                                        <span className="font-medium text-zinc-300">
-                                            {isAdmin ? 'Support Team' : (msg.profiles?.artist_name || 'You')}
-                                        </span>
-                                        <span>{new Date(msg.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
-                                    </div>
-                                    <div className={`p-3 rounded-lg text-sm ${isMe ? 'bg-emerald-600 text-white rounded-tr-none' : 'bg-zinc-800 text-zinc-200 rounded-tl-none border border-white/5'}`}>
-                                        {msg.message}
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
+       <div className="flex-1 bg-zinc-950 border border-white/5 border-t-0 flex flex-col relative overflow-hidden">
+            {/* Background Accent */}
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-500/5 via-zinc-950/0 to-zinc-950/0 pointer-events-none" />
+
+            <div className="flex-1 p-4 sm:p-6 overflow-y-auto z-10 scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent">
+                <ChatInterface 
+                    initialMessages={messages || []} 
+                    ticketId={ticket.id} 
+                    userId={user?.id || ''}
+                    ticketCreatedAt={ticket.created_at} 
+                />
             </div>
 
             {/* Input Area */}
             {ticket.status !== 'closed' ? (
-                <div className="p-4 bg-zinc-900 border-t border-white/5">
-                    <form action={replyTx} className="relative">
-                        <input type="hidden" name="ticketId" value={ticket.id} />
-                        <Input 
-                            name="message" 
-                            required 
-                            placeholder="Type your reply..." 
-                            className="pr-12 bg-zinc-950 border-white/10 py-6"
-                            autoComplete="off"
-                        />
-                        <Button type="submit" size="icon" className="absolute right-1 top-1 h-10 w-10 bg-emerald-600 hover:bg-emerald-500 text-white rounded-sm">
-                            <Send size={18} />
-                        </Button>
-                    </form>
+                <div className="p-4 sm:p-6 bg-zinc-950/80 backdrop-blur-xl border-t border-white/5 z-20">
+                    <ReplyForm ticketId={ticket.id} />
                 </div>
             ) : (
-                <div className="p-4 bg-zinc-900 border-t border-white/5 text-center text-zinc-500 text-sm">
-                    This ticket is closed. You can no longer reply.
+                <div className="p-6 bg-zinc-950/90 border-t border-white/5 backdrop-blur-sm z-20">
+                    <div className="max-w-md mx-auto bg-zinc-900/50 border border-white/5 rounded-xl p-4 text-center">
+                        <div className="w-10 h-10 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-3 text-zinc-400">
+                             <Lock size={18} />
+                        </div>
+                        <h3 className="text-sm font-medium text-white mb-1">Ticket Closed</h3>
+                        <p className="text-xs text-zinc-500">This conversation has been resolved. If you need further help, please create a new ticket.</p>
+                    </div>
                 </div>
             )}
        </div>
