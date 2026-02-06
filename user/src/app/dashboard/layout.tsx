@@ -3,17 +3,37 @@ import { redirect } from 'next/navigation'
 import { Toaster } from "@/components/ui/sonner"
 import Sidebar from '@/components/sidebar'
 import NotificationCenter from '@/components/notification-center'
+import ArtistSwitcher from '@/components/artist-switcher'
+import PageTransition from '@/components/page-transition'
 
 export default async function DashboardLayout({
   children,
+  searchParams,
 }: {
   children: React.ReactNode
+  searchParams?: { artistId?: string }
 }) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     
     if (!user) {
         redirect('/login')
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role, id')
+        .eq('id', user.id)
+        .single()
+
+    const isLabel = profile?.role === 'label'
+    let artists: any[] = []
+    if (isLabel) {
+        const { data } = await supabase
+            .from('profiles')
+            .select('id, artist_name')
+            .eq('label_id', user.id)
+        artists = data || []
     }
 
     async function signOut() {
@@ -42,16 +62,19 @@ export default async function DashboardLayout({
             <div className="flex items-center gap-4">
                {/* Search or Breadcrumbs could go here */}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
+                {isLabel && <ArtistSwitcher artists={artists} />}
                 <NotificationCenter />
             </div>
         </header>
 
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-10 relative">
-             <div className="space-y-12">
-               {children}
-             </div>
+        {/* Scrollable Content - Optimized for smooth transitions */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-10 relative will-change-scroll">
+             <PageTransition>
+               <div className="space-y-12">
+                 {children}
+               </div>
+             </PageTransition>
         </div>
       </div>
       <Toaster />

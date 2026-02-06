@@ -14,10 +14,25 @@ export async function updateProfile(formData: FormData) {
   const bio = formData.get('bio') as string
   const phone = formData.get('phone') as string
   const address = formData.get('address') as string
+  const legalName = formData.get('legalName') as string
+  const dateOfBirth = formData.get('dateOfBirth') as string
+  const gender = formData.get('gender') as string
+  const country = formData.get('country') as string
+  const city = formData.get('city') as string
+  const postalCode = formData.get('postalCode') as string
   const bankName = formData.get('bankName') as string
   const accountNumber = formData.get('accountNumber') as string
   const ifscCode = formData.get('ifscCode') as string
   const panNumber = formData.get('panNumber') as string
+  const spotifyArtistId = formData.get('spotifyArtistId') as string
+  const appleArtistId = formData.get('appleArtistId') as string
+  const instagramUrl = formData.get('instagramUrl') as string
+  const twitterUrl = formData.get('twitterUrl') as string
+  const facebookUrl = formData.get('facebookUrl') as string
+  const youtubeUrl = formData.get('youtubeUrl') as string
+  const soundcloudUrl = formData.get('soundcloudUrl') as string
+  const tiktokUrl = formData.get('tiktokUrl') as string
+  const websiteUrl = formData.get('websiteUrl') as string
 
   const { error } = await supabase
     .from('profiles')
@@ -27,10 +42,27 @@ export async function updateProfile(formData: FormData) {
         bio: bio,
         phone,
         address,
+        legal_name: legalName,
+        date_of_birth: dateOfBirth || null,
+        gender,
+        country,
+        city,
+        postal_code: postalCode,
         bank_name: bankName,
         account_number: accountNumber,
         ifsc_code: ifscCode,
         pan_number: panNumber,
+        paypal_email: formData.get('paypalEmail') as string,
+        upi_id: formData.get('upiId') as string,
+        spotify_artist_id: spotifyArtistId,
+        apple_artist_id: appleArtistId,
+        instagram_url: instagramUrl,
+        twitter_url: twitterUrl,
+        facebook_url: facebookUrl,
+        youtube_url: youtubeUrl,
+        soundcloud_url: soundcloudUrl,
+        tiktok_url: tiktokUrl,
+        website_url: websiteUrl,
         updated_at: new Date().toISOString()
     })
     .eq('id', user.id)

@@ -3,7 +3,7 @@
 import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-export async function createWithdrawalRequest(amount: number) {
+export async function createWithdrawalRequest(amount: number, paymentMode: string, paymentDetails: any) {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -37,24 +37,32 @@ export async function createWithdrawalRequest(amount: number) {
   if (updateError) throw new Error("Failed to update balance")
 
   // 3. Create Transaction Record
-  const { error: txError } = await supabase
+  const { data: tx, error: txError } = await supabase
     .from('transactions')
     .insert({
         user_id: user.id,
         amount: -amount, // Debit
         type: 'withdrawal',
-        description: 'Withdrawal Request (Pending)',
+        description: `Withdrawal Request via ${paymentMode} (Pending)`,
         status: 'pending'
     })
+    .select('id')
+    .single()
 
-  if (txError) console.error("Failed to log transaction:", txError)
+  if (txError) {
+      console.error("Failed to log transaction:", txError)
+      throw new Error("Failed to initialize transaction")
+  }
 
   const { error: insertError } = await supabase
     .from('payout_requests')
     .insert({
         user_id: user.id,
         amount: amount,
-        status: 'pending'
+        status: 'pending',
+        transaction_id: tx.id,
+        payment_mode: paymentMode,
+        payment_details: paymentDetails
     })
 
   if (insertError) {
@@ -135,6 +143,81 @@ export async function deleteTrack(trackId: string) {
         throw new Error(error.message)
     }
     console.log('Track deleted successfully')
+
+    revalidatePath('/dashboard')
+    return { success: true }
+}
+
+export async function bulkDeleteTracks(trackIds: string[]) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) throw new Error('Unauthorized')
+    
+    if (!trackIds || trackIds.length === 0) return { success: true }
+
+    // 1. Fetch all tracks to verify ownership and status
+    const { data: tracks, error: fetchError } = await supabase
+        .from('tracks')
+        .select('id, status, artist_id')
+        .in('id', trackIds)
+
+    if (fetchError || !tracks) {
+        throw new Error('Failed to fetch tracks')
+    }
+
+    // 2. Security Check: Ownership & Status
+    const invalidTracks = tracks.filter(t => 
+        t.artist_id !== user.id || 
+        (t.status !== 'draft' && t.status !== 'rejected')
+    )
+
+    if (invalidTracks.length > 0) {
+        throw new Error(`Cannot delete ${invalidTracks.length} tracks. Ensure you own them and they are Drafts or Rejected.`)
+    }
+
+    // 3. Delete
+    const { error: deleteError } = await supabase
+        .from('tracks')
+        .delete()
+        .in('id', trackIds)
+
+    if (deleteError) {
+        throw new Error(deleteError.message)
+    }
+
+    revalidatePath('/dashboard')
+    return { success: true }
+}
+
+export async function requestCorrection(trackId: string, field: string, newValue: string, reason: string) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    if (!user) throw new Error('Unauthorized')
+
+    // Verify ownership
+    const { data: track } = await supabase
+        .from('tracks')
+        .select('id, artist_id')
+        .eq('id', trackId)
+        .single()
+
+    if (!track) throw new Error('Track not found')
+    if (track.artist_id !== user.id) throw new Error('Unauthorized')
+
+    const { error } = await supabase
+        .from('correction_requests')
+        .insert({
+            track_id: trackId,
+            artist_id: user.id,
+            field_name: field,
+            new_value: newValue,
+            reason: reason,
+            status: 'pending'
+        })
+
+    if (error) throw new Error(error.message)
 
     revalidatePath('/dashboard')
     return { success: true }

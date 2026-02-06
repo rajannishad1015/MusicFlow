@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { 
     LayoutDashboard, 
@@ -74,7 +75,10 @@ export default function Sidebar({ user, signOut, pendingTickets }: { user: any, 
 
                 {/* Dropdowns */}
                 <NavGroup icon={ShieldCheck} label="Rights Manager" />
-                <NavGroup icon={Wrench} label="Tools" />
+                <NavGroup icon={Wrench} label="Tools" items={[
+                    { href: "/dashboard/tools/audio-converter", label: "Audio Converter" },
+                    { href: "/dashboard/tools/advanced-options", label: "Advanced Options" }
+                ]} />
                 <NavGroup icon={Megaphone} label="Promotions" />
 
                 {/* Section Divider */}
@@ -114,43 +118,96 @@ export default function Sidebar({ user, signOut, pendingTickets }: { user: any, 
 }
 
 function NavItem({ href, icon: Icon, label, active }: { href: string, icon: any, label: string, active?: boolean }) {
+    const router = useRouter()
+    const [isPending, startTransition] = useTransition()
+
+    const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.preventDefault()
+        startTransition(() => {
+            router.push(href)
+        })
+    }
+
     return (
-        <Link href={href}>
+        <Link href={href} onClick={handleClick}>
             <div className={cn(
-                "group flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200",
+                "group relative flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-300 ease-out",
+                "hover:scale-[1.02] active:scale-[0.98]",
                 active 
-                    ? "bg-white/10 text-white shadow-sm" 
-                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                    ? "bg-white/10 text-white shadow-lg shadow-indigo-500/10" 
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5",
+                isPending && "opacity-60"
             )}>
+                {/* Active indicator */}
+                {active && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-indigo-500 rounded-r-full shadow-lg shadow-indigo-500/50" />
+                )}
+                
                 <Icon size={16} className={cn(
-                    "transition-all duration-200",
-                    active ? "text-indigo-400" : "text-zinc-600 group-hover:text-zinc-400"
+                    "transition-all duration-300 ease-out",
+                    active ? "text-indigo-400 drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" : "text-zinc-600 group-hover:text-zinc-400 group-hover:scale-110"
                 )} />
-                <span className="text-xs font-medium">{label}</span>
+                <span className="text-xs font-medium tracking-wide">{label}</span>
+                
+                {/* Hover glow effect */}
+                {!active && (
+                    <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-indigo-500/0 via-indigo-500/5 to-indigo-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                )}
             </div>
         </Link>
     )
 }
 
-function NavGroup({ icon: Icon, label }: { icon: any, label: string }) {
+function NavGroup({ 
+    icon: Icon, 
+    label, 
+    items 
+}: { 
+    icon: any, 
+    label: string, 
+    items?: { href: string, label: string }[] 
+}) {
     const [isOpen, setIsOpen] = useState(false)
+    const pathname = usePathname()
 
     return (
         <div>
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between px-4 py-2.5 transition-all duration-300 text-gray-400 hover:text-black hover:bg-gray-50 border-l-2 border-transparent"
+                className={cn(
+                    "w-full flex items-center justify-between px-4 py-2.5 transition-all duration-300 rounded-lg group",
+                    isOpen ? "text-white bg-white/5" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                )}
             >
                 <div className="flex items-center gap-3">
-                    <Icon size={16} className="text-gray-300" />
-                    <span className="text-[11px] font-bold uppercase tracking-[0.15em]">{label}</span>
+                    <Icon size={16} className={cn(
+                        "transition-all duration-200",
+                        isOpen ? "text-indigo-400" : "text-zinc-600 group-hover:text-zinc-400"
+                    )} />
+                    <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
                 </div>
-                <ChevronDown size={12} className={cn("transition-transform text-gray-300", isOpen && "rotate-180")} />
+                <ChevronDown size={12} className={cn("transition-transform duration-200 text-zinc-600", isOpen && "rotate-180")} />
             </button>
             
             {isOpen && (
-                <div className="ml-10 mt-1 space-y-1 py-1">
-                    <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-300 hover:text-black cursor-pointer transition-colors border-l border-gray-100 italic">Extended Options</div>
+                <div className="ml-9 mt-1 space-y-1 py-1 border-l border-zinc-800">
+                    {items ? items.map((item) => (
+                        <Link key={item.href} href={item.href}>
+                            <div className={cn(
+                                "px-4 py-2 text-xs font-medium transition-all duration-200 relative",
+                                pathname === item.href 
+                                    ? "text-indigo-400" 
+                                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5 rounded-r-lg"
+                            )}>
+                                {pathname === item.href && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-indigo-500 rounded-full" />
+                                )}
+                                {item.label}
+                            </div>
+                        </Link>
+                    )) : (
+                        <div className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600 italic">No Options Available</div>
+                    )}
                 </div>
             )}
         </div>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { submitTrack } from './actions'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { UploadCloud, Loader2, Music, Image as ImageIcon, X, Calendar, Disc, Check, ChevronRight, ChevronLeft, Save } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import AudioPlayer from '@/components/audio-player'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -30,6 +31,7 @@ const ALL_PLATFORMS = [
 export default function UploadForm({ initialData }: { initialData?: any }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [draftLoaded, setDraftLoaded] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   
   // File States
@@ -45,6 +47,11 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
   const [featuringArtist, setFeaturingArtist] = useState(initialData?.albums?.featuring_artist || '')
   const [genre, setGenre] = useState(initialData?.genre || '')
   const [subGenre, setSubGenre] = useState(initialData?.albums?.sub_genre || '')
+  
+  const [courtesyLine, setCourtesyLine] = useState(initialData?.albums?.courtesy_line || '')
+  const [description, setDescription] = useState(initialData?.description || '')
+  const [language, setLanguage] = useState(initialData?.albums?.language || 'english')
+  const [lyrics, setLyrics] = useState(initialData?.lyrics || '')
   
   // Dates
   const [releaseDate, setReleaseDate] = useState(initialData?.albums?.release_date ? new Date(initialData.albums.release_date).toISOString().split('T')[0] : '')
@@ -102,6 +109,8 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
   const [trackPrimaryArtistApple, setTrackPrimaryArtistApple] = useState('')
   const [trackFeaturingArtistSpotify, setTrackFeaturingArtistSpotify] = useState('')
   const [trackFeaturingArtistApple, setTrackFeaturingArtistApple] = useState('')
+
+  // ... (previous state definitions)
 
   const openArtistDialog = (mode: 'release' | 'track' | 'release-featuring' | 'track-featuring') => {
       setArtistDialogMode(mode)
@@ -168,12 +177,13 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
   const [cLineYear, setCLineYear] = useState(initialC.year)
   const [cLineText, setCLineText] = useState(initialC.text)
 
-  const [courtesyLine, setCourtesyLine] = useState(initialData?.albums?.courtesy_line || '')
-
-  // Additional
-  const [description, setDescription] = useState(initialData?.albums?.description || '')
-  const [language, setLanguage] = useState(initialData?.language || 'English')
-  const [lyrics, setLyrics] = useState(initialData?.lyrics || '')
+  const clearDraft = () => {
+    if(confirm("Are you sure you want to discard this draft? All unsaved progress will be lost.")) {
+        localStorage.removeItem('upload_draft')
+        setDraftLoaded(false)
+        window.location.reload()
+    }
+  }
   
   // Helpers
   const addLyricist = () => {
@@ -229,8 +239,14 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
       channels: number
       format: string
       duration: number
+      peakLevel?: number
+      clippingDetected?: boolean
+      silenceDetected?: boolean
+      averageVolume?: number
   } | null>(null)
   
+  const [analyzingFile, setAnalyzingFile] = useState(false)
+
   const handleAudioChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
@@ -243,6 +259,7 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
             return
         }
 
+       setAnalyzingFile(true)
        try {
            const parseBlob = await import('music-metadata-browser').then(m => m.parseBlob)
            const metadata = await parseBlob(file)
@@ -253,17 +270,44 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
            const duration = format.duration || 0
            const channels = format.numberOfChannels || 0
            
-           // Validation Rules
+           // Basic Metadata Validation Rules
            if (bitrate < 128) {
                toast.error(`Bitrate too low (${bitrate}kbps). Minimum 128kbps required (320kbps recommended).`)
                e.target.value = ''
+               setAnalyzingFile(false)
                return
            }
            
            if (duration < 30) {
                toast.error("Track is too short. Minimum 30 seconds required.")
                e.target.value = ''
+               setAnalyzingFile(false)
                return
+           }
+
+           // Deep Audio Analysis (Web Audio API)
+           let deepAnalysis = {}
+           try {
+                const { AudioAnalyzer } = await import('@/lib/audio-analysis')
+                const analyzer = new AudioAnalyzer()
+                const result = await analyzer.analyzeFile(file)
+                
+                deepAnalysis = {
+                    peakLevel: result.peakLevel,
+                    clippingDetected: result.clippingDetected,
+                    silenceDetected: result.silenceDetected,
+                    averageVolume: result.averageVolume
+                }
+
+                if (result.clippingDetected) {
+                    toast.warning("Warning: Possible audio clipping detected (Peak > -0.1dB).", { duration: 5000 })
+                }
+                if (result.silenceDetected) {
+                    toast.warning("Warning: Extended silence detected in track.", { duration: 5000 })
+                }
+
+           } catch (analysisErr) {
+               console.warn("Deep audio analysis failed, proceeding with basic metadata", analysisErr)
            }
 
            // If all good
@@ -274,14 +318,22 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
                sampleRate,
                channels,
                format: ext.toUpperCase(),
-               duration
+               duration,
+               ...deepAnalysis
            })
-           toast.success("Audio analysis passed!")
+           
+           if (!Object.keys(deepAnalysis).length) {
+               toast.success("Audio basics valid!")
+           } else {
+               toast.success("Audio analysis complete!")
+           }
 
        } catch (error) {
            console.error("Audio analysis failed", error)
            toast.error("Failed to analyze audio file. Please ensure it is a valid audio file.")
            e.target.value = ''
+       } finally {
+           setAnalyzingFile(false)
        }
     }
   }
@@ -412,6 +464,7 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
 
         const result = await submitTrack(formData)
         if (result.success) {
+            localStorage.removeItem('upload_draft')
             toast.success(initialData ? "Release updated successfully!" : "Release submitted successfully!")
             router.push('/dashboard/catalog')
         }
@@ -430,6 +483,20 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
         <div className="mb-8 pt-4 pb-6 bg-zinc-950 border-b border-white/5">
              <div className="max-w-4xl mx-auto px-4">
                 <div className="flex items-center justify-between relative">
+                    {/* Discard Draft Button */}
+                     {draftLoaded && (
+                        <div className="absolute right-0 top-[-60px]">
+                            <Button 
+                                onClick={clearDraft} 
+                                size="sm" 
+                                variant="destructive" 
+                                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 text-xs uppercase font-bold tracking-wider"
+                            >
+                                Discard Draft
+                            </Button>
+                        </div>
+                    )}
+
                     {/* Progress Line */}
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-zinc-800"></div>
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-emerald-500 transition-all duration-500 origin-left" style={{ transform: `scaleX(${(currentStep - 1) / 3})` }}></div>
@@ -764,7 +831,39 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
                         
                         <div className="space-y-2">
                             <Label className="text-xs uppercase font-bold text-zinc-400">Lyrics</Label>
-                            <Textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} placeholder="Lyrics" className="bg-white/5 border-white/10 text-white min-h-[120px]" />
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Input 
+                                        type="file" 
+                                        accept=".lrc,.txt" 
+                                        className="bg-white/5 border-white/10 text-white text-xs h-9 w-full file:bg-zinc-800 file:text-zinc-300 file:border-0 file:rounded-md file:px-2 file:py-1 file:mr-4 file:text-xs"
+                                        onChange={(e) => {
+                                            const file = e.target.files?.[0]
+                                            if (file) {
+                                                if (!file.name.endsWith('.lrc') && !file.name.endsWith('.txt')) {
+                                                    toast.error("Please upload a valid .lrc or .txt file")
+                                                    return
+                                                }
+                                                const reader = new FileReader()
+                                                reader.onload = (ev) => {
+                                                    const text = ev.target?.result as string
+                                                    // Basic LRC validation (check for timestamp)
+                                                    if (text.match(/\[\d{2}:\d{2}\.\d{2}\]/)) {
+                                                        setLyrics(text)
+                                                        toast.success("Lyrics imported from file!")
+                                                    } else {
+                                                        setLyrics(text)
+                                                        toast.info("Lyrics imported. Note: No LRC timestamps detected.")
+                                                    }
+                                                }
+                                                reader.readAsText(file)
+                                            }
+                                        }}
+                                    />
+                                    <span className="text-[10px] text-zinc-500 whitespace-nowrap uppercase tracking-wider font-bold">Upload .LRC</span>
+                                </div>
+                                <Textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} placeholder="Paste lyrics here or upload .lrc file..." className="bg-white/5 border-white/10 text-white min-h-[120px]" />
+                            </div>
                         </div>
 
                      </div>
@@ -882,20 +981,7 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
                             <Input value={callerTuneTiming} onChange={(e) => setCallerTuneTiming(e.target.value)} placeholder="HH:MM:SS" className="bg-white/5 border-white/10 text-white h-12" />
                         </div>
                         
-                         <div className="space-y-3">
-                             <Label className="text-xs uppercase font-bold text-zinc-400">Want to distribute music video?</Label>
-                             <div className="flex gap-4">
-                                 {['yes', 'no'].map((opt) => (
-                                     <label key={opt} className="flex items-center gap-2 cursor-pointer group">
-                                         <div className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${distributeVideo === opt ? 'border-indigo-500' : 'border-zinc-600 group-hover:border-zinc-500'}`}>
-                                             {distributeVideo === opt && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
-                                         </div>
-                                         <input type="radio" className="hidden" name="distributeVideo" value={opt} checked={distributeVideo === opt} onChange={() => setDistributeVideo(opt)} />
-                                         <span className="text-sm text-zinc-300 capitalize">{opt}</span>
-                                     </label>
-                                 ))}
-                             </div>
-                         </div>
+
                      </div>
                  </div>
             </div>
@@ -966,10 +1052,14 @@ export default function UploadForm({ initialData }: { initialData?: any }) {
                                  <p className="text-xs text-zinc-500 mt-1">{trackGenre} • {trackSubGenre}</p>
                                  {trackFeaturingArtist && <p className="text-xs text-zinc-400 mt-1">Feat. {trackFeaturingArtist}</p>}
                              </div>
-                              <div>
-                                 <p className="text-xs uppercase font-bold text-zinc-600 mb-1">Audio Source</p>
-                                 <p className="text-sm text-zinc-300 truncate">{audioFile?.name || initialData?.file_url || 'No File'}</p>
-                                 <p className="text-xs text-zinc-500 mt-1">{duration ? `${Math.floor(duration / 60)}:${String(Math.floor(duration % 60)).padStart(2, '0')}` : '0:00'} • {isInstrumental === 'yes' ? 'Instrumental' : 'Vocal'}</p>
+                             <div className="col-span-1 md:col-span-2">
+                                 <p className="text-xs uppercase font-bold text-zinc-600 mb-2">Audio Preview & Analysis</p>
+                                 {(audioFile || initialData?.file_url) && (
+                                     <AudioPlayer 
+                                        url={audioFile ? URL.createObjectURL(audioFile) : initialData.file_url} 
+                                        title={trackTitle}
+                                     />
+                                 )}
                              </div>
                              <div>
                                  <p className="text-xs uppercase font-bold text-zinc-600 mb-1">Distribution</p>

@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Disc, CheckCircle, DollarSign, Ticket, Mic2, FileText, Music, ShieldCheck } from "lucide-react"
+import { Disc, CheckCircle, DollarSign, Ticket, Mic2, FileText, Music, ShieldCheck, TrendingUp } from "lucide-react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { cn } from "@/lib/utils"
 import RevenueCard from "@/components/revenue-card"
@@ -11,7 +11,8 @@ import Link from "next/link"
 export default function DashboardHome({ 
     user, 
     tracks, 
-    stats 
+    stats,
+    bankDetails
 }: { 
     user: any, 
     tracks: any[], 
@@ -22,7 +23,8 @@ export default function DashboardHome({
         tickets: number,
         statusCounts: any[],
         genres: any[]
-    } 
+    },
+    bankDetails: any
 }) {
     
     // Config for Charts (Cinematic Neon Palette)
@@ -69,16 +71,38 @@ export default function DashboardHome({
                         <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.25em]">Discography</CardTitle>
                         <Disc className="h-4 w-4 text-zinc-600 group-hover:text-indigo-400 transition-colors" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-black tracking-tighter text-white">{stats.total}</div>
-                        <div className="flex items-center gap-2 mt-3">
-                            <span className="text-[9px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-black tracking-wider">TRACKS</span>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Total Distributions</p>
+                    <CardContent className="pt-0 relative z-10">
+                        <div className="flex items-end justify-between">
+                            <div className="text-3xl font-black tracking-tighter text-white">{stats.total}</div>
+                            <div className="text-[9px] font-bold text-emerald-400 mb-1 flex items-center gap-1 bg-emerald-500/10 px-1.5 py-0.5 rounded-full border border-emerald-500/20">
+                                <TrendingUp size={10} /> +2 this week
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                             <div className="h-1.5 w-1.5 rounded-full bg-indigo-500 shadow-[0_0_10px_#6366f1] animate-pulse" />
+                             <span className="text-[9px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded-md font-bold tracking-wider">TRACKS</span>
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-tight">Total Distributions</p>
+                        </div>
+                        {/* Decorative Digital Frequency */}
+                        <div className="mt-4 flex items-end justify-between gap-0.5 h-8 opacity-40">
+                             {[
+                                { h: 35, o: 0.5 }, { h: 50, o: 0.7 }, { h: 25, o: 0.4 }, { h: 60, o: 0.8 }, 
+                                { h: 45, o: 0.6 }, { h: 80, o: 0.9 }, { h: 55, o: 0.7 }, { h: 30, o: 0.5 }, 
+                                { h: 70, o: 0.8 }, { h: 40, o: 0.6 }, { h: 65, o: 0.7 }, { h: 35, o: 0.5 }, 
+                                { h: 50, o: 0.6 }, { h: 25, o: 0.4 }, { h: 55, o: 0.7 }
+                             ].map((bar, i) => (
+                                <div 
+                                    key={i} 
+                                    className="w-full bg-indigo-500 rounded-t-[1px]" 
+                                    style={{ 
+                                        height: `${bar.h}%`, 
+                                        opacity: bar.o
+                                    }} 
+                                />
+                            ))}
                         </div>
                     </CardContent>
-                    <div className="absolute -right-2 -bottom-2 opacity-10 blur-xl group-hover:opacity-20 transition-opacity">
-                         <Disc size={80} className="text-indigo-500" />
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/5 to-transparent pointer-events-none" />
                 </Card>
 
                 {/* Validated */}
@@ -87,18 +111,39 @@ export default function DashboardHome({
                         <CardTitle className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.25em]">Active Releases</CardTitle>
                         <CheckCircle className="h-4 w-4 text-emerald-500/20 group-hover:text-emerald-500 transition-colors" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-black tracking-tighter text-emerald-500">{stats.approved}</div>
-                        <div className="flex items-center gap-2 mt-3">
-                            <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-black tracking-wider">STREAMING</span>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Store Visibility</p>
+                    <CardContent className="pt-0 relative z-10">
+                        <div className="flex items-end justify-between">
+                            <div className="text-3xl font-black tracking-tighter text-emerald-500">{stats.approved}</div>
+                            <div className="text-[9px] font-bold text-zinc-500 mb-1">
+                                {(stats.total > 0 ? (stats.approved / stats.total * 100).toFixed(0) : 0)}% Success Rate
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse" />
+                            <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md font-bold tracking-wider">LIVE</span>
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-tight">Store Visibility</p>
+                        </div>
+                         {/* Real Platform Logos */}
+                         <div className="mt-4 flex -space-x-2 overflow-hidden py-1 pl-1">
+                            {[
+                                "/platforms/spotify.svg",
+                                "/platforms/apple-music.svg", 
+                                "/platforms/youtube-music.svg",
+                                "/platforms/amazon-music.svg"
+                            ].map((logo, i) => (
+                                <div key={i} className="inline-block h-6 w-6 rounded-full ring-2 ring-zinc-950 bg-white flex items-center justify-center overflow-hidden">
+                                     <img src={logo} alt="Store" className="h-full w-full object-cover" />
+                                </div>
+                            ))}
+                            <div className="h-6 w-6 rounded-full ring-2 ring-zinc-950 bg-zinc-900 flex items-center justify-center text-[8px] font-bold text-zinc-500">+12</div>
                         </div>
                     </CardContent>
+                    <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/5 to-transparent pointer-events-none" />
                 </Card>
 
                 {/* Revenue */}
                 <div className="col-span-1">
-                     <RevenueCard balance={stats.revenue} />
+                     <RevenueCard balance={stats.revenue} bankDetails={bankDetails} />
                 </div>
 
                 {/* Open Tickets */}
@@ -107,13 +152,42 @@ export default function DashboardHome({
                         <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.25em]">Label Support</CardTitle>
                         <Ticket className="h-4 w-4 text-zinc-600 group-hover:text-indigo-400 transition-colors" />
                     </CardHeader>
-                    <CardContent>
-                        <div className="text-4xl font-black tracking-tighter text-white">{stats.tickets}</div>
-                        <div className="flex items-center gap-2 mt-3">
-                             <span className="text-[9px] bg-white/5 text-zinc-400 border border-white/10 px-2 py-0.5 rounded-full font-black tracking-wider">TICKETS</span>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Resolution Status</p>
+                    <CardContent className="pt-0 relative z-10">
+                         <div className="flex items-end justify-between">
+                            <div className="text-3xl font-black tracking-tighter text-white">{stats.tickets}</div>
+                             <div className="flex items-center gap-1 mb-1">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                                </span>
+                                <span className="text-[9px] font-bold text-indigo-400 uppercase tracking-wider">Live</span>
+                            </div>
                         </div>
+                        <div className="flex items-center gap-2 mt-2">
+                             <span className="text-[9px] bg-white/5 text-zinc-400 border border-white/10 px-1.5 py-0.5 rounded-md font-bold tracking-wider">TICKETS</span>
+                            <p className="text-[9px] text-zinc-500 font-bold uppercase tracking-tight">Resolution Status</p>
+                        </div>
+                         {/* Live Agent Status */}
+                         <div className="mt-4 flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
+                            <div className="flex -space-x-2">
+                                {[
+                                    "/avatars/agent-1.svg",
+                                    "/avatars/agent-2.svg",
+                                    "/avatars/agent-3.svg",
+                                ].map((url, i) => (
+                                    <div key={i} className="h-5 w-5 rounded-full ring-2 ring-zinc-950 bg-white flex items-center justify-center overflow-hidden">
+                                        <img src={url} alt="Agent" className="h-full w-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <div className="text-[8px] font-mono text-emerald-400 flex items-center gap-1">
+                                    <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse"/> Active
+                                </div>
+                            </div>
+                         </div>
                     </CardContent>
+                    <div className="absolute inset-0 bg-gradient-to-t from-indigo-500/5 to-transparent pointer-events-none" />
                 </Card>
             </div>
 
@@ -282,7 +356,7 @@ export default function DashboardHome({
                      </div>
                      <div className="bg-white/[0.03] backdrop-blur-3xl border border-white/20 rounded-3xl overflow-hidden shadow-2xl hover:border-white/40 transition-colors">
                         <div className="divide-y divide-white/5">
-                            {tracks.length > 0 ? tracks.slice(0, 5).map((track) => (
+                            {tracks.length > 0 ? tracks.slice(0, 3).map((track) => (
                                 <div key={track.id} className="p-5 flex items-center gap-6 hover:bg-white/5 transition-all group cursor-pointer">
                                     <div className="h-12 w-12 bg-zinc-900 rounded-xl overflow-hidden flex-shrink-0 border border-white/5 shadow-inner">
                                         {track.albums?.cover_art_url ? (

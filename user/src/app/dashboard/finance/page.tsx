@@ -1,154 +1,236 @@
 import { createClient } from '@/utils/supabase/server'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
-import { Building2, Pencil } from 'lucide-react'
+import { Building2, Pencil, Wallet, ArrowUpRight, ShieldCheck } from 'lucide-react'
 import RevenueCard from '@/components/revenue-card'
+import BankCard from '@/components/bank-card'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/components/ui/card"
 import WithdrawRequestForm from './withdraw-request-form'
 import TransactionList from './transaction-list'
+import PayoutList from './payout-list'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import RevenueAnalytics from './revenue-analytics'
+import { format } from 'date-fns'
 
-export default async function FinancePage() {
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
+export default async function FinancePage({ searchParams }: { searchParams: { artistId?: string } }) {
+  const awaitedParams = await searchParams
+  const artistId = awaitedParams.artistId as string
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  if (!user) {
+    return <div>Log in required</div>
+  }
   const { data: profile } = await supabase
     .from('profiles')
-    .select('balance, bank_name, account_number, ifsc_code')
-    .eq('id', user?.id)
+    .select('role, balance, bank_name, account_number, ifsc_code, paypal_email, upi_id')
+    .eq('id', user.id)
     .single()
 
-  // Fetch Transactions
-  const { data: transactions } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('user_id', user?.id)
-    .order('created_at', { ascending: false })
-    .limit(20)
+  const isLabel = profile?.role === 'label'
 
-  // Fetch Payout Requests (Legacy/Specific view)
-  const { data: payoutRequests } = await supabase
-    .from('payout_requests')
-    .select('*')
-    .eq('user_id', user?.id)
-    .order('created_at', { ascending: false })
+  // Fetch managed artists if Label
+  let artistIds: string[] = []
+  if (isLabel) {
+    const { data: artistList } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('label_id', user.id)
+    artistIds = artistList?.map(a => a.id) || []
+  }
+
+  // Setup queries
+  let revenueQuery = supabase.from('revenue_logs').select('*, tracks(title)')
+  let transQuery = supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(20)
+  let payoutQuery = supabase.from('payout_requests').select('*').order('created_at', { ascending: false })
+
+  if (artistId) {
+      revenueQuery = revenueQuery.eq('user_id', artistId)
+      transQuery = transQuery.eq('user_id', artistId)
+      payoutQuery = payoutQuery.eq('user_id', artistId)
+  } else if (isLabel) {
+      revenueQuery = revenueQuery.in('user_id', artistIds)
+      transQuery = transQuery.in('user_id', artistIds)
+      payoutQuery = payoutQuery.in('user_id', artistIds)
+  } else {
+      revenueQuery = revenueQuery.eq('user_id', user.id)
+      transQuery = transQuery.eq('user_id', user.id)
+      payoutQuery = payoutQuery.eq('user_id', user.id)
+  }
+
+  const { data: revenueLogs } = await revenueQuery.order('period', { ascending: true })
+  const { data: transactions } = await transQuery
+  const { data: payoutRequests } = await payoutQuery
+
+  // Process data for charts
+  const platformMap = new Map<string, number>()
+  const trackMap = new Map<string, number>()
+  const monthlyMap = new Map<string, number>()
+  const countryMap = new Map<string, number>()
+
+  revenueLogs?.forEach(log => {
+      const amount = Number(log.amount)
+      
+      // Platform logic
+      platformMap.set(log.platform, (platformMap.get(log.platform) || 0) + amount)
+      
+      // Track logic
+      const trackTitle = (log.tracks as any)?.title || 'Unknown Track'
+      trackMap.set(trackTitle, (trackMap.get(trackTitle) || 0) + amount)
+      
+      // Monthly logic
+      const monthStr = format(new Date(log.period), 'MMM yyyy')
+      monthlyMap.set(monthStr, (monthlyMap.get(monthStr) || 0) + amount)
+
+      // Country logic
+      const country = log.country_code || 'US'
+      countryMap.set(country, (countryMap.get(country) || 0) + amount)
+  })
+
+  // Format data for charts
+  const platformData = Array.from(platformMap.entries()).map(([name, value]) => ({ name, value }))
+  const trackData = Array.from(trackMap.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5) // Top 5
+  
+  const monthlyData = Array.from(monthlyMap.entries())
+    .map(([month, revenue]) => ({ month, revenue }))
+    // Note: Assuming date sorting is handled by input order (which is ordered by period) 
+    // If not, would need proper date object parsing.
+  
+  const countryData = Array.from(countryMap.entries())
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5) // Top 5 countries
+
+  const calculatedBalance = artistId || !isLabel ? Number(profile?.balance || 0) : revenueLogs?.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0
 
   return (
-    <div className="space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 border-b border-white/5 pb-6">
             <div>
-                <h1 className="text-3xl font-bold">Finance & Wallet</h1>
-                <p className="text-zinc-500">Manage your earnings, view transactions, and request payouts.</p>
+                <h1 className="text-4xl font-black text-white tracking-tight uppercase flex items-center gap-3">
+                    <Wallet className="text-indigo-500" size={32} />
+                    Finance Center
+                </h1>
+                <p className="text-zinc-500 mt-2 font-medium">Manage earnings, payouts, and financial health.</p>
             </div>
-            <div className="flex items-center gap-2">
-                <Link href="/dashboard/settings">
-                    <Button variant="outline" className="border-white/10 hover:bg-white/5">
-                        <Pencil size={16} className="mr-2"/> Manage Account
+            <div className="flex items-center gap-3">
+                 <Link href="/dashboard/settings">
+                    <Button variant="outline" className="border-white/10 hover:bg-white/5 text-zinc-400 hover:text-white transition-all h-10 px-6 font-bold uppercase tracking-wider text-xs">
+                        <Pencil size={14} className="mr-2"/> Bank Settings
                     </Button>
                 </Link>
-                <WithdrawRequestForm 
-                    currentBalance={profile?.balance || 0}
+            </div>
+        </div>
+
+        {/* Top Cards Grid */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+             <div className="col-span-1 lg:col-span-1 h-full">
+                 <RevenueCard 
+                    balance={calculatedBalance} 
                     bankDetails={{
                         bankName: profile?.bank_name,
                         accountNumber: profile?.account_number,
-                        ifscCode: profile?.ifsc_code
+                        ifscCode: profile?.ifsc_code,
+                        paypalEmail: profile?.paypal_email,
+                        upiId: profile?.upi_id
                     }}
-                />
-            </div>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-             <div className="col-span-1">
-                <RevenueCard balance={profile?.balance || 0} />
+                 />
              </div>
              
-             <Card className="bg-zinc-900/50 border-white/10">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-zinc-400 flex items-center gap-2">
-                        <Building2 size={16} /> Bank Account
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {profile?.bank_name ? (
-                        <div className="space-y-1">
-                            <div className="font-bold text-lg">{profile.bank_name}</div>
-                            <div className="font-mono text-zinc-500 text-sm">**** {profile.account_number?.slice(-4)}</div>
-                            <div className="text-xs text-zinc-600 uppercase tracking-wider mt-2">{profile.ifsc_code}</div>
-                        </div>
-                    ) : (
-                        <div className="text-center py-2">
-                            <p className="text-zinc-500 text-sm mb-3">No account connected</p>
-                            <Link href="/dashboard/settings">
-                                <Button size="sm" variant="secondary" className="w-full">Connect Account</Button>
-                            </Link>
-                        </div>
-                    )}
-                </CardContent>
-             </Card>
+             <div className="col-span-1 lg:col-span-1 h-full">
+                <BankCard 
+                    bankName={profile?.bank_name}
+                    accountNumber={profile?.account_number}
+                    ifscCode={profile?.ifsc_code}
+                />
+             </div>
+             
+             {/* Quick Actions / Summary Card */}
+             <div className="col-span-1 lg:col-span-1 hidden lg:block">
+                 <Card className="h-full bg-zinc-950/50 border-white/5 border-dashed flex flex-col justify-center items-center text-center p-6 space-y-4">
+                     <div className="p-3 rounded-full bg-indigo-500/10 text-indigo-400">
+                         <ShieldCheck size={24} />
+                     </div>
+                     <div>
+                         <h3 className="text-white font-bold">Secure Payouts</h3>
+                         <p className="text-xs text-zinc-500 mt-1 max-w-[200px] mx-auto">All transactions are encrypted and processed via secure gateways.</p>
+                     </div>
+                     <div className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full text-[10px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> System Operational
+                     </div>
+                 </Card>
+             </div>
         </div>
 
+        {/* Tabs Section */}
         <Tabs defaultValue="transactions" className="w-full">
-            <TabsList className="bg-zinc-900 border border-white/10">
-                <TabsTrigger value="transactions">Recent Transactions</TabsTrigger>
-                <TabsTrigger value="payouts">Payout History</TabsTrigger>
-            </TabsList>
+            <div className="flex items-center justify-between mb-6">
+                 <TabsList className="bg-zinc-950/50 border border-white/5 p-1 h-12 rounded-lg">
+                    <TabsTrigger value="transactions" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 font-bold text-xs uppercase tracking-wider px-6 h-10 rounded-md transition-all">Transactions</TabsTrigger>
+                    <TabsTrigger value="analytics" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white text-zinc-500 font-bold text-xs uppercase tracking-wider px-6 h-10 rounded-md transition-all">Analytics</TabsTrigger>
+                    <TabsTrigger value="payouts" className="data-[state=active]:bg-zinc-800 data-[state=active]:text-white text-zinc-500 font-bold text-xs uppercase tracking-wider px-6 h-10 rounded-md transition-all">Payouts</TabsTrigger>
+                </TabsList>
+            </div>
             
-            <TabsContent value="transactions" className="mt-4">
-                <Card className="bg-zinc-900/50 border-white/10">
-                    <CardHeader>
-                        <CardTitle>Transaction History</CardTitle>
-                        <CardDescription>Recent activity in your wallet</CardDescription>
+            <TabsContent value="analytics" className="mt-0 focus-visible:ring-0 outline-none">
+                <RevenueAnalytics data={{ platformData, trackData, monthlyData, countryData }} />
+            </TabsContent>
+            
+            <TabsContent value="transactions" className="mt-0 focus-visible:ring-0 outline-none">
+                <Card className="bg-zinc-950 border-white/10 shadow-2xl overflow-hidden">
+                    <CardHeader className="border-b border-white/5 bg-white/[0.01]">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-white">Recent Activity</CardTitle>
+                                <CardDescription className="text-zinc-500 mt-1 text-xs">History of royalties and adjustments.</CardDescription>
+                            </div>
+                            <Button variant="ghost" size="sm" className="hidden text-xs uppercase font-bold tracking-wider text-zinc-500 hover:text-white">Export CSV</Button>
+                        </div>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-0">
                         <TransactionList transactions={transactions || []} />
                     </CardContent>
                 </Card>
             </TabsContent>
 
-            <TabsContent value="payouts" className="mt-4">
-                 <Card className="bg-zinc-900/50 border-white/10">
-                    <CardHeader>
-                        <CardTitle>Withdrawal Requests</CardTitle>
-                        <CardDescription>Status of your payout requests</CardDescription>
+            <TabsContent value="payouts" className="mt-0 focus-visible:ring-0 outline-none">
+                 <Card className="bg-zinc-950 border-white/10 shadow-2xl overflow-hidden">
+                    <CardHeader className="border-b border-white/5 bg-white/[0.01]">
+                         <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle className="text-sm font-black uppercase tracking-[0.2em] text-white">Withdrawal History</CardTitle>
+                                <CardDescription className="text-zinc-500 mt-1 text-xs">Track your payout requests and status.</CardDescription>
+                            </div>
+                        </div>
                     </CardHeader>
-                    <CardContent>
-                        {payoutRequests && payoutRequests.length > 0 ? (
-                            <div className="rounded-md border border-white/10">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-white/5">
-                                        <tr className="text-left border-b border-white/10">
-                                            <th className="p-3 font-medium text-zinc-400">Date</th>
-                                            <th className="p-3 font-medium text-zinc-400">Amount</th>
-                                            <th className="p-3 font-medium text-zinc-400">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {payoutRequests.map((req: any) => (
-                                            <tr key={req.id} className="border-b border-white/5 last:border-0 hover:bg-white/5">
-                                                <td className="p-3 text-zinc-300">{new Date(req.created_at).toLocaleDateString()}</td>
-                                                <td className="p-3 font-mono text-zinc-200">${req.amount.toFixed(2)}</td>
-                                                <td className="p-3">
-                                                    <span className={`px-2 py-1 rounded-full text-xs font-bold uppercase
-                                                        ${req.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 
-                                                          req.status === 'rejected' ? 'bg-red-500/10 text-red-500 border border-red-500/20' : 
-                                                          'bg-amber-500/10 text-amber-500 border border-amber-500/20'}`}>
-                                                        {req.status}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div className="text-center py-8 text-zinc-500">
-                                No withdrawal history found.
-                            </div>
-                        )}
+                    <CardContent className="p-0">
+                        <PayoutList payouts={payoutRequests || []} />
                     </CardContent>
                 </Card>
             </TabsContent>
         </Tabs>
+
+        {/* Floating Withdraw Button (Mobile) - Optional or just rely on the top button */}
+        <div className="fixed bottom-6 right-6 md:hidden">
+            <WithdrawRequestForm 
+                currentBalance={calculatedBalance}
+                bankDetails={{
+                    bankName: profile?.bank_name,
+                    accountNumber: profile?.account_number,
+                    ifscCode: profile?.ifsc_code,
+                    paypalEmail: profile?.paypal_email,
+                    upiId: profile?.upi_id
+                }}
+            />
+        </div>
     </div>
   )
 }

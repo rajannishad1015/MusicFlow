@@ -4,6 +4,29 @@ import { createClient } from '@/utils/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 
+// Simulates audio fingerprinting against external DB
+async function checkAudioFingerprint(fileUrl: string, title: string) {
+    // In a real scenario, we'd send the file buffer/URL to ACRCloud or Audible Magic
+    // Simulation: Flag anything with 'copyright' or 'leaked' in the title
+    const suspiciousKeywords = ['copyright', 'leaked', 'test-match'];
+    const isMatched = suspiciousKeywords.some(kw => title.toLowerCase().includes(kw));
+    
+    return {
+        isMatched,
+        fingerprintId: isMatched ? `MATCH-${Math.random().toString(36).substr(2, 9)}` : null
+    };
+}
+
+// Simulates automated transcoding (e.g. via FFmpeg or Supabase Edge Functions)
+async function simulateTranscode(fileUrl: string) {
+    // In reality, this would trigger an async job.
+    // We return placeholders for the standard and preview MP3 versions.
+    return {
+        standardUrl: fileUrl.replace(/\.(wav|flac|aif)$/i, '.mp3'), // Mocked transformation
+        previewUrl: fileUrl.replace(/\.(wav|flac|aif|mp3)$/i, '_preview.mp3')
+    };
+}
+
 export async function submitTrack(formData: any) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -99,7 +122,11 @@ export async function submitTrack(formData: any) {
         .select()
         .single()
 
-    if (albumError) throw new Error(albumError.message)
+    if (albumError) throw new Error((albumError as any).message)
+
+    // 2.5 Check Fingerprinting & Transcoding
+    const { isMatched, fingerprintId } = await checkAudioFingerprint(formData.audioUrl, formData.title);
+    const { standardUrl, previewUrl } = await simulateTranscode(formData.audioUrl);
 
     // 3. Create Track
     const { error: trackError } = await supabase
@@ -111,7 +138,6 @@ export async function submitTrack(formData: any) {
             file_url: formData.audioUrl,
             duration: formData.duration || 0,
             is_explicit: formData.explicit,
-            status: formData.status || 'pending', 
             lyrics: formData.lyrics,
             copyright_line: formData.cLine,
             publishing_line: formData.pLine,
@@ -150,12 +176,20 @@ export async function submitTrack(formData: any) {
             sample_rate: formData.audioAnalysis?.sampleRate,
             channels: formData.audioAnalysis?.channels,
             encoding: formData.audioAnalysis?.format, // e.g., 'MP3'
+            
+            // Phase 2: Transcoding & Fingerprinting
+            preview_url: previewUrl,
+            standard_url: standardUrl,
+            fingerprint_id: fingerprintId,
+            is_flagged: isMatched,
+            status: isMatched ? 'flagged' : (formData.status || 'pending'),
+
             file_size: 0 // We could get this from file size if passed, skipping for now or adding prop
         })
     
     // If draft, do not send notification/email logic (if we had it)
     
-    if (trackError) throw new Error(trackError.message)
+    if (trackError) throw new Error((trackError as any).message)
 
     revalidatePath('/dashboard')
     return { success: true }

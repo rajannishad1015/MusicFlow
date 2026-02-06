@@ -2,110 +2,70 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { useState } from "react"
 import Link from "next/link"
-import { DollarSign, Loader2 } from "lucide-react"
-import { toast } from "sonner"
-import { createWithdrawalRequest } from "@/app/dashboard/actions"
+import { DollarSign, TrendingUp, History, ArrowRight } from "lucide-react"
+import WithdrawRequestForm from '@/app/dashboard/finance/withdraw-request-form'
 
-export default function RevenueCard({ balance, currency = '$' }: { balance: number, currency?: string }) {
-    const [isWithdrawOpen, setIsWithdrawOpen] = useState(false)
-    const [amount, setAmount] = useState('')
-    const [loading, setLoading] = useState(false)
-
-    const handleWithdraw = async () => {
-        setLoading(true)
-        try {
-            const withdrawAmount = parseFloat(amount)
-            if (isNaN(withdrawAmount) || withdrawAmount <= 0) {
-                toast.error("Please enter a valid amount")
-                return
-            }
-            if (withdrawAmount > balance) {
-                toast.error("Insufficient balance")
-                return
-            }
-
-            await createWithdrawalRequest(withdrawAmount)
-            toast.success("Withdrawal request submitted!")
-            setIsWithdrawOpen(false)
-            setAmount('')
-        } catch (error: any) {
-            toast.error(error.message)
-        } finally {
-            setLoading(false)
-        }
+interface RevenueCardProps {
+    balance: number
+    currency?: string
+    bankDetails: {
+        bankName: string | null
+        accountNumber: string | null
+        ifscCode: string | null
+        paypalEmail: string | null
+        upiId: string | null
     }
+}
 
+export default function RevenueCard({ balance, currency = '$', bankDetails }: RevenueCardProps) {
     return (
-        <Card className="bg-white/[0.03] backdrop-blur-2xl border-white/20 shadow-2xl relative overflow-hidden group transition-all hover:border-white/40">
-            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-                <CardTitle className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em]">Royalties Balance</CardTitle>
-                <DollarSign className="h-4 w-4 text-indigo-400 group-hover:text-white transition-colors" />
+        <Card className="h-full bg-zinc-950 border-white/10 shadow-2xl relative overflow-hidden group">
+            {/* Visual Background Elements */}
+            <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-indigo-600/10 blur-[100px] rounded-full translate-x-1/2 -translate-y-1/2 group-hover:bg-indigo-600/20 transition-colors duration-700 pointer-events-none" />
+            
+            <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0 relative z-10">
+                <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-md bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
+                        <DollarSign className="h-3 w-3 text-indigo-400" />
+                    </div>
+                    <CardTitle className="text-[10px] font-black text-zinc-500 uppercase tracking-[0.25em]">Total Balance</CardTitle>
+                </div>
+                <Link href="/dashboard/finance">
+                    <Button variant="ghost" size="icon" className="h-6 w-6 text-zinc-500 hover:text-white rounded-full hover:bg-white/5">
+                        <History size={14} />
+                    </Button>
+                </Link>
             </CardHeader>
-            <CardContent>
-                <div className="flex justify-between items-end">
+
+            <CardContent className="relative z-10">
+                <div className="flex flex-col gap-6">
                     <div>
-                        <div className="text-4xl font-black tracking-tighter text-white">{currency}{balance.toFixed(2)}</div>
-                        <div className="flex items-center gap-2 mt-3">
-                             <span className="text-[9px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2 py-0.5 rounded-full font-black tracking-wider">EARNINGS</span>
-                            <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-tight">Withdrawable Income</p>
+                        <div className="text-3xl font-black tracking-tighter text-white tabular-nums flex items-baseline gap-1">
+                            <span className="text-lg text-zinc-500 font-bold">{currency}</span>
+                            {balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                             <div className="flex items-center px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-bold uppercase tracking-wider backdrop-blur-md">
+                                <TrendingUp size={10} className="mr-1" /> Available
+                             </div>
+                             <p className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Ready to Payout</p>
                         </div>
                     </div>
-                    
-                    <div className="flex items-center gap-2">
-                        <Link href="/dashboard/finance">
-                            <Button variant="ghost" size="sm" className="text-zinc-500 hover:text-white font-black text-[10px] uppercase tracking-[0.2em] h-8 px-4 rounded-full transition-all">
-                                History
-                            </Button>
-                        </Link>
-                        <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
-                            <DialogTrigger asChild>
-                                <Button variant="secondary" size="sm" className="bg-white text-black hover:bg-indigo-500 hover:text-white font-black text-[10px] uppercase tracking-[0.2em] h-8 px-4 rounded-full shadow-lg transition-all">
-                                    Withdraw
+
+                    <div className="pt-4 border-t border-white/5 flex gap-3">
+                        <WithdrawRequestForm 
+                            currentBalance={balance}
+                            bankDetails={bankDetails}
+                            trigger={
+                                <Button className="flex-1 bg-white hover:bg-indigo-50 shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] text-black font-black uppercase tracking-[0.1em] text-[10px] h-8 transition-all">
+                                    Requests Payout <ArrowRight size={12} className="ml-2" />
                                 </Button>
-                            </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px] bg-zinc-950 border-white/10 text-white">
-                            <DialogHeader>
-                                <DialogTitle className="text-white">Request Withdrawal</DialogTitle>
-                                <DialogDescription className="text-zinc-400">
-                                    Enter the amount you wish to withdraw. Minimum $10.00.
-                                </DialogDescription>
-                            </DialogHeader>
-                            <div className="grid gap-4 py-4">
-                                <div className="grid grid-cols-4 items-center gap-4">
-                                    <label htmlFor="amount" className="text-right text-sm text-zinc-400">
-                                        Amount
-                                    </label>
-                                    <div className="col-span-3 relative">
-                                        <span className="absolute left-3 top-2.5 text-zinc-500">$</span>
-                                        <Input
-                                            id="amount"
-                                            type="number"
-                                            value={amount}
-                                            onChange={(e) => setAmount(e.target.value)}
-                                            className="pl-7 bg-zinc-900 border-white/10 text-white placeholder:text-zinc-600 focus-visible:ring-indigo-500"
-                                            placeholder="0.00"
-                                            max={balance}
-                                        />
-                                    </div>
-                                </div>
-                                <p className="text-sm text-zinc-500 text-right">Available: ${balance.toFixed(2)}</p>
-                            </div>
-                            <DialogFooter>
-                                <Button variant="outline" onClick={() => setIsWithdrawOpen(false)} className="bg-transparent border-white/10 text-white hover:bg-white/5 hover:text-white">Cancel</Button>
-                                <Button onClick={handleWithdraw} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Submit Request
-                                </Button>
-                            </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                            }
+                        />
+                    </div>
                 </div>
-            </div>
-        </CardContent>
+            </CardContent>
         </Card>
     )
 }

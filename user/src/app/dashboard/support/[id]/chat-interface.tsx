@@ -91,60 +91,58 @@ export default function ChatInterface({ initialMessages, ticketId, userId, ticke
   }, [ticketId, userId, supabase])
 
   return (
-    <div className="flex flex-col space-y-8 pb-4 max-w-4xl mx-auto px-2 sm:px-0 font-sans">
+    <div className="flex flex-col space-y-8 pb-4 max-w-4xl mx-auto px-4 sm:px-6 py-6 font-sans">
         {/* Date Divider */}
-        <div className="flex items-center justify-center">
-             <div className="bg-zinc-800/40 backdrop-blur-md border border-white/5 text-zinc-400 text-[10px] font-semibold px-4 py-1.5 rounded-full uppercase tracking-wider shadow-sm">
+        <div className="flex items-center justify-center sticky top-0 z-20">
+             <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 text-zinc-400 text-[10px] font-bold px-4 py-1 rounded-full uppercase tracking-widest shadow-lg">
                 {new Date(ticketCreatedAt).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
              </div>
         </div>
 
-        <div className="flex flex-col space-y-6">
+        <div className="flex flex-col space-y-8">
             {messages.map((msg, index) => {
                 const isMe = msg.sender_id === userId
                 const isAdmin = msg.profiles?.role === 'admin'
                 
-                // Grouping Logic (Optional: could look ahead/behind to group bubbles)
-                
                 return (
                     <div 
                         key={msg.id} 
-                        className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''} group animate-in fade-in slide-in-from-bottom-4 duration-500 ease-out`}
+                        className={`flex gap-4 ${isMe ? 'flex-row-reverse' : ''} group animate-in fade-in slide-in-from-bottom-2 duration-500 ease-out`}
                     >
-                        <Avatar className={`h-10 w-10 border shadow-lg shrink-0 ${isMe ? 'border-indigo-500/20' : 'border-zinc-700/50'}`}>
-                            <AvatarFallback className={`text-xs font-bold ${
+                        <Avatar className={`h-9 w-9 border shadow-lg shrink-0 mt-1 ${isMe ? 'border-indigo-500/20' : 'border-zinc-700/50'}`}>
+                            <AvatarFallback className={`text-[10px] font-black ${
                                 isAdmin 
-                                    ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white' 
+                                    ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white' 
                                     : (isMe ? 'bg-zinc-800 text-zinc-300' : 'bg-zinc-800 text-zinc-400')
                             }`}>
-                                {isAdmin ? <Shield size={16} /> : <User size={16} />}
+                                {isAdmin ? <Shield size={14} /> : <User size={14} />}
                             </AvatarFallback>
                         </Avatar>
 
-                        <div className={`flex flex-col max-w-[85%] sm:max-w-[65%] ${isMe ? 'items-end' : 'items-start'}`}>
+                        <div className={`flex flex-col max-w-[85%] sm:max-w-[70%] ${isMe ? 'items-end' : 'items-start'}`}>
                             
                             {/* Header Label */}
-                            <div className={`flex items-center gap-2 text-[10px] mb-2 px-1 ${isMe ? 'flex-row-reverse' : ''} text-zinc-500 opacity-0 group-hover:opacity-100 transition-all duration-300`}>
-                                <span className={`font-medium tracking-wide ${isAdmin ? 'text-indigo-400' : 'text-zinc-400'}`}>
+                            <div className={`flex items-center gap-2 text-[10px] mb-1.5 px-1 ${isMe ? 'flex-row-reverse' : ''} text-zinc-500 opacity-60 group-hover:opacity-100 transition-all duration-300`}>
+                                <span className={`font-bold tracking-wide ${isAdmin ? 'text-indigo-400' : 'text-zinc-400'}`}>
                                     {isMe ? 'You' : (isAdmin ? 'Support Team' : msg.profiles?.artist_name)}
                                 </span>
-                                <span className="text-zinc-600">•</span>
-                                <span>{new Date(msg.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span className="text-zinc-700">•</span>
+                                <span className="font-mono">{new Date(msg.created_at).toLocaleString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>
 
                             {/* Message Bubble */}
                             <div className={`
-                                px-5 py-4 text-[14px] leading-relaxed relative shadow-md backdrop-blur-sm
-                                transition-all hover:shadow-lg duration-200
+                                px-5 py-3.5 text-sm relative shadow-[0_2px_10px_rgba(0,0,0,0.2)] backdrop-blur-md
+                                transition-all hover:scale-[1.01] duration-200
                                 ${isMe 
                                     ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-2xl rounded-tr-sm border border-indigo-500/30' 
-                                    : 'bg-zinc-900/80 text-zinc-200 border border-white/10 rounded-2xl rounded-tl-sm hover:bg-zinc-900'
+                                    : 'bg-zinc-900/90 text-zinc-200 border border-white/10 rounded-2xl rounded-tl-sm hover:bg-zinc-800'
                                 }
                             `}>
-                                <p className="whitespace-pre-wrap font-normal tracking-normal">{msg.message}</p>
+                                <p className="whitespace-pre-wrap font-medium tracking-normal leading-relaxed text-[13.5px]">{msg.message}</p>
                                 
                                 {msg.attachment_url && (
-                                    <div className={`mt-4 pt-3 ${isMe ? 'border-white/20' : 'border-white/10'} border-t`}>
+                                    <div className={`mt-3 pt-3 ${isMe ? 'border-indigo-500/30' : 'border-white/10'} border-t`}>
                                         <AttachmentPreview url={msg.attachment_url} />
                                     </div>
                                 )}
@@ -152,11 +150,11 @@ export default function ChatInterface({ initialMessages, ticketId, userId, ticke
 
                             {/* Status Helpers for Admin */}
                             {isAdmin && (
-                                <div className="mt-1.5 flex items-center gap-1.5 px-1">
-                                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-indigo-500/10 text-indigo-400">
-                                        <Shield size={10} />
+                                <div className="mt-2 flex items-center gap-1.5 px-1 opacity-80">
+                                    <span className="inline-flex items-center justify-center w-3 h-3 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                        <Shield size={8} />
                                     </span>
-                                    <span className="text-[10px] font-medium text-indigo-400/80 tracking-wide uppercase">Official Support</span>
+                                    <span className="text-[9px] font-bold text-indigo-400 tracking-widest uppercase">Official Staff</span>
                                 </div>
                             )}
                         </div>
@@ -164,7 +162,7 @@ export default function ChatInterface({ initialMessages, ticketId, userId, ticke
                 )
             })}
         </div>
-        <div ref={bottomRef} className="h-4" />
+        <div ref={bottomRef} className="h-2" />
     </div>
   )
 }
